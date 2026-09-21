@@ -133,6 +133,7 @@ All submitted code and configuration were reviewed and understood before being i
 
 ## 11. Control Questions
 
+<<<<<<< HEAD
 1. **What is the purpose of pom.xml?**  
    It describes the Maven project, dependencies, Java version, plugins, and build configuration.
 
@@ -192,6 +193,9 @@ All submitted code and configuration were reviewed and understood before being i
 
 20. **Which line of the program is the most difficult to explain and why?**  
     The average calculation is the most complex because it combines division-by-zero protection, type conversion to double, and arithmetic calculation.
+=======
+To be completed with answers in my own words.
+>>>>>>> b179967 (Finalize LAB_01)
 
 ## 12. Conclusion
 
