@@ -133,7 +133,65 @@ All submitted code and configuration were reviewed and understood before being i
 
 ## 11. Control Questions
 
-To be completed with answers in my own words.
+1. **What is the purpose of pom.xml?**  
+   It describes the Maven project, dependencies, Java version, plugins, and build configuration.
+
+2. **What is the difference between test, verify, and package?**  
+   `test` runs tests, `verify` runs tests and additional checks, and `package` creates the JAR file.
+
+3. **Why is Maven Wrapper needed?**  
+   It allows the project to use a defined Maven version without requiring Maven to be installed globally.
+
+4. **What is the role of the main method?**  
+   It is the entry point of the Java application.
+
+5. **How is a primitive type different from String?**  
+   Primitive types store simple values directly, while String is an object.
+
+6. **Why should an average be calculated using double?**  
+   Integer division would discard the fractional part of the result.
+
+7. **What happens if Integer.parseInt receives "abc"?**  
+   It throws NumberFormatException.
+
+8. **Why should an invalid line not be skipped silently?**  
+   The user should know which line was invalid and why.
+
+9. **How does String.split(";", -1) handle an empty last field?**  
+   It keeps the empty last field in the resulting array.
+
+10. **Why use Path.of instead of a hard-coded path?**  
+    Path provides platform-independent file paths.
+
+11. **Why specify StandardCharsets.UTF_8?**  
+    It guarantees consistent text encoding on different operating systems.
+
+12. **What is the difference between %n and \n?**  
+    `%n` uses the platform-specific line separator.
+
+13. **What data must be validated in variant 20?**  
+    Client and plan must not be empty, months must be positive, visits non-negative, and price non-negative.
+
+14. **Which tests can detect an incorrect average calculation?**  
+    Tests with several records whose average contains a fractional part.
+
+15. **What is the purpose of a static analyzer?**  
+    It detects potential bugs and code-quality problems without running the application.
+
+16. **What role does GitHub Actions perform?**  
+    It automatically builds, tests, and verifies the project in CI.
+
+17. **What should a GitHub Issue for a defect contain?**  
+    A description, reproduction steps, expected result, and actual result.
+
+18. **What should be included in the academic integrity section?**  
+    The AI tool used, prompts, accepted recommendations, corrections, and my own contribution.
+
+19. **What do the DevOps and Validator agents do?**  
+    DevOps helps with Maven, CI, packaging, and infrastructure; Validator checks edge cases and defects.
+
+20. **Which line of the program is the most difficult to explain and why?**  
+    The average calculation is the most complex because it combines division-by-zero protection, type conversion to double, and arithmetic calculation.
 
 ## 12. Conclusion
 

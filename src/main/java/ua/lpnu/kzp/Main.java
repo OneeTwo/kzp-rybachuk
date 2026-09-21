@@ -7,8 +7,18 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Locale;
 
+/**
+ * Processes gym membership records from a CSV file
+ * and generates a statistical report.
+ */
 public class Main {
 
+    /**
+     * Entry point of the application.
+     * Supports custom input and output paths, help, and version arguments.
+     *
+     * @param args command-line arguments
+     */
     public static void main(String[] args) {
         if (args.length > 0 && "--help".equals(args[0])) {
             System.out.println("""
