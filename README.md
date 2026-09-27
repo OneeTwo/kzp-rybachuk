@@ -1,60 +1,129 @@
-# Gym Membership Report
+# Gym Membership Report — LAB_02
 
-Laboratory Work No. 1 for the Cross-Platform Programming course.
+Laboratory Work No. 2 for the Cross-Platform Programming course.
 
-## Variant
-
-Variant 20 — Gym.
+**Variant:** 20 — Gym
 
 ## Description
 
-The application reads gym membership records from a CSV file, validates them, calculates statistics, and writes a report to the console and an output file.
+LAB_02 refactors the program from LAB_01 using classes, encapsulation, validation, and Java records.
+
+The external behavior of the application remains unchanged.
+
+## Domain Model
+
+### Membership
+
+`Membership` represents one gym membership.
+
+Fields:
+
+- `client` — client name
+- `plan` — membership plan
+- `months` — membership duration
+- `visits` — number of visits
+- `price` — membership price
+
+Validation:
+
+- client must not be null or blank;
+- plan must not be null or blank;
+- months must be greater than 0;
+- visits must be greater than or equal to 0;
+- price must be finite and greater than or equal to 0.
+
+CSV records are converted to objects using:
+
+```java
+Membership.fromCsv(line)
+```
+
+### VisitsPrice
+
+`VisitsPrice` is an immutable Java record containing:
+
+```text
+visits
+price
+```
+
+It is used as a helper value during statistics calculation.
 
 ## Input Format
 
-Each line contains:
-
+```text
 client;plan;months;visits;price
+```
 
-## Calculated Statistics
-Number of valid records
-Average number of visits
-Total revenue
-Longest membership duration
-## Requirements
-Java 21
-Maven Wrapper
-## Build and Verify
+Example:
+
+```text
+Іван Петренко;Standard;3;24;1500.00
+Марія Коваль;Premium;12;110;6500.00
+Олег Бондар;Basic;1;8;700.00
+```
+
+## Output
+
+The application calculates:
+
+- number of valid records;
+- average number of visits;
+- total revenue;
+- longest membership duration.
+
+Example:
+
+```text
+Valid records: 3
+Average visits: 47.33
+Total revenue: 8700.00
+Longest membership: 12 months
+```
+
+## Build and Test
 
 Windows:
 
-mvnw.cmd verify
-mvnw.cmd package
+```powershell
+.\mvnw.cmd test
+.\mvnw.cmd verify
+.\mvnw.cmd package
+```
 
-Linux / macOS:
-
-./mvnw verify
-./mvnw package
 ## Run
-java -jar target/lab01-1.0.0.jar
 
-## Custom input and output:
+```powershell
+java -jar target\lab01-1.0.0.jar
+```
 
-java -jar target/lab01-1.0.0.jar --input data/input.csv --output out/report.txt
+Custom input and output:
 
-## Help:
+```powershell
+java -jar target\lab01-1.0.0.jar --input data\input.csv --output out\report.txt
+```
 
-java -jar target/lab01-1.0.0.jar --help
+## Project Structure
 
-## Version:
+```text
+src/main/java/ua/lpnu/kzp/
+├── Main.java
+├── Membership.java
+└── VisitsPrice.java
 
-java -jar target/lab01-1.0.0.jar --version
-## Testing
+src/test/java/ua/lpnu/kzp/
+├── MainTest.java
+└── MembershipTest.java
+```
 
-The project uses JUnit 5 and SpotBugs.
+## Technologies
 
-## GitHub Actions verifies the project on:
+- Java 21
+- Maven
+- JUnit 5
+- SpotBugs
+- GitHub Actions
 
-Ubuntu
-Windows
-macOS
+## Repository
+
+https://github.com/OneeTwo/kzp-rybachuk
