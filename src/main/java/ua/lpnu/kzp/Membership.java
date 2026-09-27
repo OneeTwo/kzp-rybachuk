@@ -23,28 +23,51 @@ public final class Membership {
      * @param visits number of visits
      * @param price membership price
      */
-    public Membership(String client, String plan, int months, int visits, double price) {
-        this.client = Objects.requireNonNull(client, "Client cannot be null");
-        this.plan = Objects.requireNonNull(plan, "Plan cannot be null");
+    public Membership(
+        String client,
+        String plan,
+        int months,
+        int visits,
+        double price
+    ) {
+        this.client = Objects.requireNonNull(
+            client,
+            "Client cannot be null"
+        );
+
+        this.plan = Objects.requireNonNull(
+            plan,
+            "Plan cannot be null"
+        );
 
         if (client.isBlank()) {
-            throw new IllegalArgumentException("Client cannot be empty");
+            throw new IllegalArgumentException(
+                "Client cannot be empty"
+            );
         }
 
         if (plan.isBlank()) {
-            throw new IllegalArgumentException("Plan cannot be empty");
+            throw new IllegalArgumentException(
+                "Plan cannot be empty"
+            );
         }
 
         if (months <= 0) {
-            throw new IllegalArgumentException("Months must be positive");
+            throw new IllegalArgumentException(
+                "Months must be positive"
+            );
         }
 
         if (visits < 0) {
-            throw new IllegalArgumentException("Visits cannot be negative");
+            throw new IllegalArgumentException(
+                "Visits cannot be negative"
+            );
         }
 
         if (price < 0 || !Double.isFinite(price)) {
-            throw new IllegalArgumentException("Price must be finite and non-negative");
+            throw new IllegalArgumentException(
+                "Price must be finite and non-negative"
+            );
         }
 
         this.months = months;
@@ -55,60 +78,119 @@ public final class Membership {
     /**
      * Creates a membership from a CSV line.
      *
-     * @param line CSV line
+     * @param line CSV line in the format
+     *             client;plan;months;visits;price
      * @return parsed membership
+     * @throws IllegalArgumentException if the CSV structure,
+     *                                  numeric format,
+     *                                  or values are invalid
      */
     public static Membership fromCsv(String line) {
-        Objects.requireNonNull(line, "Line cannot be null");
+        Objects.requireNonNull(
+            line,
+            "Line cannot be null"
+        );
 
         String[] fields = line.split(";", -1);
 
         if (fields.length != 5) {
-            throw new IllegalArgumentException("Expected 5 fields");
+            throw new IllegalArgumentException(
+                "Expected 5 fields"
+            );
         }
 
         try {
             String client = fields[0].trim();
             String plan = fields[1].trim();
-            int months = Integer.parseInt(fields[2].trim());
-            int visits = Integer.parseInt(fields[3].trim());
-            double price = Double.parseDouble(fields[4].trim());
 
-            return new Membership(client, plan, months, visits, price);
+            int months = Integer.parseInt(
+                fields[2].trim()
+            );
+
+            int visits = Integer.parseInt(
+                fields[3].trim()
+            );
+
+            double price = Double.parseDouble(
+                fields[4].trim()
+            );
+
+            return new Membership(
+                client,
+                plan,
+                months,
+                visits,
+                price
+            );
 
         } catch (NumberFormatException exception) {
             throw new IllegalArgumentException(
-                "Invalid numeric value", exception
+                "Invalid numeric value",
+                exception
             );
         }
     }
 
+    /**
+     * Returns the client name.
+     *
+     * @return client name
+     */
     public String getClient() {
         return client;
     }
 
+    /**
+     * Returns the membership plan.
+     *
+     * @return membership plan
+     */
     public String getPlan() {
         return plan;
     }
 
+    /**
+     * Returns the membership duration in months.
+     *
+     * @return membership duration in months
+     */
     public int getMonths() {
         return months;
     }
 
+    /**
+     * Returns the number of visits.
+     *
+     * @return number of visits
+     */
     public int getVisits() {
         return visits;
     }
 
+    /**
+     * Returns the membership price.
+     *
+     * @return membership price
+     */
     public double getPrice() {
         return price;
     }
 
+    /**
+     * Returns a readable representation of the membership.
+     *
+     * @return formatted membership information
+     */
     @Override
     public String toString() {
         return String.format(
             Locale.ROOT,
             "%s; %s; %d months; %d visits; %.2f",
-            client, plan, months, visits, price
+            client,
+            plan,
+            months,
+            visits,
+            price
         );
     }
 }

@@ -234,7 +234,7 @@ The following commands are used:
 The packaged application was also started successfully:
 
 ```powershell
-java -jar target\lab01-1.0.0.jar
+java -jar target\lab01-1.1.0.jar
 ```
 
 Program output:
@@ -257,6 +257,10 @@ GitHub Actions is configured to run the project checks on:
 - macOS.
 
 Final CI verification is performed on the LAB_02 Pull Request.
+
+**Version:** 1.1.0  
+**Git tag:** v1.1.0  
+**Successful CI:** https://github.com/OneeTwo/kzp-rybachuk/actions/runs/36349383729
 
 ## 8. GitHub Issues and Pull Request
 
