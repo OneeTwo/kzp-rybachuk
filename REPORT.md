@@ -1,204 +1,444 @@
-# Laboratory Work No. 1 Report
+# Laboratory Work No. 2 Report
 
 ## 1. Topic and Variant
 
-**Topic:** Java Project Deployment and Basic Data Processing  
+**Topic:** Classes, Record and Encapsulation in a Java Project  
+**Laboratory Work:** No. 2  
 **Variant:** 20 — Gym  
 **Operating System:** Windows 11
 
+**Repository:**  
+https://github.com/OneeTwo/kzp-rybachuk
+
 ## 2. Objective
 
-The objective of this laboratory work was to create a cross-platform Java console application using Maven, Git, GitHub, automated testing, static analysis, and GitHub Actions.
+The objective of this laboratory work was to refactor the program from LAB_01 by replacing direct processing of CSV fields with domain objects.
 
-## 3. Task
+The program now uses:
 
-Input record format:
+- a `Membership` entity class;
+- private final fields;
+- constructor validation;
+- a static `fromCsv` factory method;
+- a `VisitsPrice` record;
+- JUnit 5 tests for valid and invalid data.
 
-client:String; plan:String; months:int; visits:int; price:double
+The external behavior of the program remains compatible with LAB_01.
 
-## The application calculates:
+## 3. State Before and After Refactoring
 
-Number of valid records
-Average number of visits
-Total revenue
-Longest membership duration
-## 4. Program Structure
+### Before LAB_02
 
-The application reads records from a CSV file, validates each record, converts numeric fields, calculates statistics, and generates a report.
+In LAB_01, every CSV line was split directly inside `Main.java`.
 
-Main files:
+The program manually extracted:
 
-src/main/java/ua/lpnu/kzp/Main.java
-src/test/java/ua/lpnu/kzp/MainTest.java
-data/input.csv
-pom.xml
-.github/workflows/ci.yml
-## 5. Infrastructure
+```text
+client
+plan
+months
+visits
+price
+```
 
-The project uses:
+Validation and numeric conversion were also performed directly in the processing loop.
 
-Java 21
-Maven
-Maven Wrapper
-JUnit 5
-SpotBugs
-Maven Shade Plugin
-GitHub Actions
+Statistics were stored in separate variables:
 
-The Maven lifecycle commands used were:
+```text
+validCount
+totalVisits
+totalRevenue
+maxMonths
+```
 
-mvnw.cmd test
-mvnw.cmd verify
-mvnw.cmd package
-## 6. GitHub Issues and Pull Requests
+### After LAB_02
 
-GitHub Issues and feature branches were used to organize the work.
+CSV data is now converted into `Membership` objects.
 
-Main Pull Requests included:
+```java
+Membership membership = Membership.fromCsv(line);
+```
 
-Project and Maven configuration
-Gym report implementation and tests
-Cross-platform GitHub Actions configuration
-Maven Wrapper fix
-Documentation
-## 7. Example
+Valid objects are stored in:
 
-Input:
+```java
+List<Membership>
+```
 
-Іван Петренко;Standard;3;24;1500.00
-Марія Коваль;Premium;12;110;6500.00
-Олег Бондар;Basic;1;8;700.00
-Анна Мельник;Premium;-3;20;1800.00
-Тарас Іванчук;Standard;6;abc;2800.00
+Validation rules are located inside the `Membership` class instead of being duplicated in `Main`.
 
-Output:
+A `VisitsPrice` record is used as an immutable helper value during statistics calculation.
 
+The report format and calculated statistics remain unchanged.
+
+## 4. Membership Entity
+
+The main domain class is:
+
+```text
+Membership
+```
+
+It contains the following private final fields:
+
+```java
+private final String client;
+private final String plan;
+private final int months;
+private final int visits;
+private final double price;
+```
+
+The object is immutable because its fields are `final` and no setters are provided.
+
+### Validation
+
+The constructor checks the following conditions:
+
+- `client` must not be null;
+- `client` must not be blank;
+- `plan` must not be null;
+- `plan` must not be blank;
+- `months` must be greater than 0;
+- `visits` must be greater than or equal to 0;
+- `price` must be finite and greater than or equal to 0.
+
+Example:
+
+```java
+Membership membership =
+        new Membership("Ivan", "Standard", 3, 24, 1500.0);
+```
+
+Invalid objects cannot be created because validation is performed inside the constructor.
+
+The class also provides getter methods for reading its values.
+
+The `toString()` method uses `Locale.ROOT` so that numeric formatting does not depend on the operating system locale.
+
+## 5. Factory Method and Record
+
+### fromCsv
+
+The static factory method:
+
+```java
+Membership.fromCsv(line)
+```
+
+creates a `Membership` object from one CSV line.
+
+Expected format:
+
+```text
+client;plan;months;visits;price
+```
+
+Example:
+
+```text
+Ivan;Standard;3;24;1500.00
+```
+
+The method:
+
+1. checks that the line is not null;
+2. splits the line into fields;
+3. verifies that exactly five fields exist;
+4. converts numeric values;
+5. creates a validated `Membership` object.
+
+If a number cannot be parsed, an `IllegalArgumentException` is generated.
+
+### VisitsPrice Record
+
+The project also contains:
+
+```java
+public record VisitsPrice(int visits, double price)
+```
+
+The record stores two immutable values:
+
+- number of visits;
+- membership price.
+
+It validates that:
+
+- visits are non-negative;
+- price is finite and non-negative.
+
+A Java record automatically provides component access methods, `equals()`, `hashCode()` and `toString()`.
+
+## 6. Testing
+
+The previous LAB_01 tests were preserved.
+
+A new test class was added:
+
+```text
+MembershipTest.java
+```
+
+The new tests check:
+
+- creation of a valid `Membership`;
+- getters;
+- null client;
+- empty client;
+- empty plan;
+- zero months;
+- negative visits;
+- negative price;
+- correct `fromCsv`;
+- incorrect number of CSV fields;
+- invalid numeric format;
+- `VisitsPrice` value equality;
+- invalid values in `VisitsPrice`.
+
+Tests were executed with:
+
+```powershell
+.\mvnw.cmd test
+```
+
+Result:
+
+```text
+BUILD SUCCESS
+```
+
+The previous tests also continue to pass after the refactoring.
+
+## 7. Infrastructure
+
+The infrastructure from LAB_01 was preserved:
+
+- Java 21;
+- Maven;
+- Maven Wrapper;
+- JUnit 5;
+- SpotBugs;
+- Maven packaging;
+- GitHub Actions.
+
+The following commands are used:
+
+```powershell
+.\mvnw.cmd test
+.\mvnw.cmd verify
+.\mvnw.cmd package
+```
+
+The packaged application was also started successfully:
+
+```powershell
+java -jar target\lab01-1.0.0.jar
+```
+
+Program output:
+
+```text
 Line 4 skipped: invalid numeric value
 Line 5 skipped: invalid number format
 Valid records: 3
 Average visits: 47.33
 Total revenue: 8700.00
 Longest membership: 12 months
-## 8. Testing
+```
 
-JUnit 5 tests verify:
+The JAR therefore preserves the behavior of the previous laboratory work.
 
-correct calculation of gym statistics;
-skipping invalid records.
+GitHub Actions is configured to run the project checks on:
 
-## Result:
+- Windows;
+- Ubuntu;
+- macOS.
 
-Tests run: 2, Failures: 0, Errors: 0, Skipped: 0
+Final CI verification is performed on the LAB_02 Pull Request.
 
-SpotBugs verification completed successfully.
+## 8. GitHub Issues and Pull Request
 
-GitHub Actions successfully verifies the project on:
+The work was performed in the separate branch:
 
-Ubuntu
-Windows
-macOS
-## 9. Documentation
+```text
+LAB_02
+```
 
-README.md contains:
+The following GitHub Issues were created:
 
-project description;
-input format;
-build instructions;
-run commands;
-testing information.
+| Issue | Change | Verification |
+|---|---|---|
+| Implement Membership entity | Added `Membership.java` | Constructor and getter tests |
+| Add Membership validation and CSV parsing | Added validation and `fromCsv()` | Invalid and valid CSV tests |
+| Implement VisitsPrice record | Added `VisitsPrice.java` | Record equality and validation tests |
+| Add LAB_02 tests | Added `MembershipTest.java` | Maven test |
+| Update LAB_02 documentation | Updated README and REPORT | Documentation review |
 
-Public and non-trivial program elements are documented where required.
+The final Pull Request merges:
+
+```text
+LAB_02 → main
+```
+
+The Pull Request is created after the implementation and documentation are completed.
+
+## 9. Behavior Comparison
+
+The purpose of the refactoring was to change the internal structure without changing the external result.
+
+### LAB_01 result
+
+```text
+Line 4 skipped: invalid numeric value
+Line 5 skipped: invalid number format
+Valid records: 3
+Average visits: 47.33
+Total revenue: 8700.00
+Longest membership: 12 months
+```
+
+### LAB_02 result
+
+```text
+Line 4 skipped: invalid numeric value
+Line 5 skipped: invalid number format
+Valid records: 3
+Average visits: 47.33
+Total revenue: 8700.00
+Longest membership: 12 months
+```
+
+The results are identical.
+
+Therefore, the internal model was refactored successfully without changing the external behavior of the application.
 
 ## 10. Academic Integrity
 
-ChatGPT was used as an AI assistant during the development of this laboratory work.
+ChatGPT was used as an AI assistant during this laboratory work.
 
-## AI contribution:
+### AI contribution
 
-clarification of laboratory requirements;
-Maven and GitHub Actions configuration recommendations;
-Git workflow guidance;
-assistance with debugging Maven Wrapper and SpotBugs issues;
-recommendations for tests and documentation.
+ChatGPT was used for:
 
-## My contribution:
+- clarification of LAB_02 requirements;
+- planning the refactoring;
+- recommendations for the `Membership` entity;
+- recommendations for constructor validation;
+- implementation guidance for `fromCsv`;
+- recommendations for the `VisitsPrice` record;
+- preparation of JUnit test cases;
+- Git and GitHub workflow guidance;
+- documentation structure;
+- debugging and verification recommendations.
 
-project creation and configuration;
-implementation and verification of the Java program;
-review and correction of generated recommendations;
-Git and GitHub workflow execution;
-testing and debugging.
+### Accepted recommendations
 
-All submitted code and configuration were reviewed and understood before being included in the project.
+The following recommendations were used:
+
+- creating a separate `Membership` class;
+- using private final fields;
+- moving validation into the constructor;
+- using `fromCsv` for parsing;
+- creating the `VisitsPrice` record;
+- adding tests for positive and negative cases;
+- preserving the external report format.
+
+### Corrected or reviewed recommendations
+
+All generated code was reviewed before use.
+
+The validation of `months` was adjusted to preserve the behavior of LAB_01, where zero months is considered invalid.
+
+The existing program output was also compared before and after the refactoring.
+
+### My contribution
+
+My contribution included:
+
+- creating and managing the Git branch;
+- creating GitHub Issues;
+- adding the source files to the project;
+- reviewing and integrating the code;
+- running Maven tests;
+- running the packaged JAR;
+- checking program output;
+- committing and pushing the implementation;
+- reviewing the documentation.
+
+All submitted code was reviewed and understood before being included in the project.
 
 ## 11. Control Questions
 
-<<<<<<< HEAD
-1. **What is the purpose of pom.xml?**  
-   It describes the Maven project, dependencies, Java version, plugins, and build configuration.
+1. **What problem does an entity class solve compared with strings and parallel variables?**  
+   It groups related data and validation rules into one object instead of spreading them across the program.
 
-2. **What is the difference between test, verify, and package?**  
-   `test` runs tests, `verify` runs tests and additional checks, and `package` creates the JAR file.
+2. **What do private and final mean for class fields?**  
+   `private` prevents direct access from outside the class, while `final` prevents reassignment after construction.
 
-3. **Why is Maven Wrapper needed?**  
-   It allows the project to use a defined Maven version without requiring Maven to be installed globally.
+3. **What is encapsulation?**  
+   Encapsulation hides the internal state of an object and allows access only through controlled methods.
 
-4. **What is the role of the main method?**  
-   It is the entry point of the Java application.
+4. **Why are invariants checked in the constructor?**  
+   It prevents the creation of an object with an invalid state.
 
-5. **How is a primitive type different from String?**  
-   Primitive types store simple values directly, while String is an object.
+5. **What is the difference between Objects.requireNonNull and isBlank?**  
+   `requireNonNull` checks whether the reference is null, while `isBlank` checks whether a string is empty or contains only whitespace.
 
-6. **Why should an average be calculated using double?**  
-   Integer division would discard the fractional part of the result.
+6. **Why can the absence of setters help preserve a valid state?**  
+   Values cannot be replaced with unchecked values after the object has been created.
 
-7. **What happens if Integer.parseInt receives "abc"?**  
-   It throws NumberFormatException.
+7. **What does a record automatically provide?**  
+   A constructor, component access methods, `equals`, `hashCode` and `toString`.
 
-8. **Why should an invalid line not be skipped silently?**  
-   The user should know which line was invalid and why.
+8. **How is a record different from a normal entity class?**  
+   A record is mainly intended as a compact immutable data carrier, while a normal class gives more control over behavior and internal structure.
 
-9. **How does String.split(";", -1) handle an empty last field?**  
-   It keeps the empty last field in the resulting array.
+9. **Why does a record not guarantee deep immutability?**  
+   If a record contains a mutable object such as a list, the contents of that object can still be changed.
 
-10. **Why use Path.of instead of a hard-coded path?**  
-    Path provides platform-independent file paths.
+10. **Why is the static fromCsv method needed?**  
+    It provides one clear place for converting a CSV line into a domain object.
 
-11. **Why specify StandardCharsets.UTF_8?**  
-    It guarantees consistent text encoding on different operating systems.
+11. **Where should an error from parsing one line be handled?**  
+    In the loop that processes the input lines so one invalid line does not stop the whole program.
 
-12. **What is the difference between %n and \n?**  
-    `%n` uses the platform-specific line separator.
+12. **Why must an invalid record not be added before validation finishes?**  
+    Otherwise invalid values could affect the statistics.
 
-13. **What data must be validated in variant 20?**  
-    Client and plan must not be empty, months must be positive, visits non-negative, and price non-negative.
+13. **What is the purpose of toString and why does it not replace CSV formatting?**  
+    `toString` gives a readable representation of an object, while CSV has a specific data-exchange format.
 
-14. **Which tests can detect an incorrect average calculation?**  
-    Tests with several records whose average contains a fractional part.
+14. **Why is Locale.ROOT used?**  
+    It keeps numeric formatting consistent on different operating systems and locales.
 
-15. **What is the purpose of a static analyzer?**  
-    It detects potential bugs and code-quality problems without running the application.
+15. **What does AAA mean in testing?**  
+    Arrange, Act, Assert: prepare the data, perform the operation, and verify the result.
 
-16. **What role does GitHub Actions perform?**  
-    It automatically builds, tests, and verifies the project in CI.
+16. **Which negative cases should be tested for the constructor?**  
+    Null or blank text, invalid numeric boundaries, negative values, NaN and infinite values where applicable.
 
-17. **What should a GitHub Issue for a defect contain?**  
-    A description, reproduction steps, expected result, and actual result.
+17. **How can we prove that refactoring did not change external behavior?**  
+    By running the same input before and after the refactoring and comparing the output.
 
-18. **What should be included in the academic integrity section?**  
-    The AI tool used, prompts, accepted recommendations, corrections, and my own contribution.
+18. **Why must the previous tests continue to pass?**  
+    They verify that functionality implemented in LAB_01 was not broken by the refactoring.
 
-19. **What do the DevOps and Validator agents do?**  
-    DevOps helps with Maven, CI, packaging, and infrastructure; Validator checks edge cases and defects.
+19. **Which infrastructure files are reused from LAB_01?**  
+    `pom.xml`, Maven Wrapper files, GitHub Actions configuration, project structure and existing tests.
 
-20. **Which line of the program is the most difficult to explain and why?**  
-    The average calculation is the most complex because it combines division-by-zero protection, type conversion to double, and arithmetic calculation.
-=======
-To be completed with answers in my own words.
->>>>>>> b179967 (Finalize LAB_01)
+20. **Which line best demonstrates encapsulation in this implementation?**  
+    A declaration such as `private final String client;` because the field cannot be accessed directly from outside the class and cannot be reassigned after construction.
 
 ## 12. Conclusion
 
-A Java console application for processing gym membership records was created. The application validates CSV data, calculates required statistics, generates a report, and supports command-line arguments.
+In Laboratory Work No. 2, the gym membership application from LAB_01 was refactored using object-oriented programming principles.
 
-The project uses Maven, JUnit 5, SpotBugs, GitHub Issues, Pull Requests, and GitHub Actions. CI successfully verifies the application on Windows, Ubuntu, and macOS.
+A `Membership` entity with private final fields and constructor validation was created. CSV parsing was moved into the `fromCsv` factory method, and the immutable `VisitsPrice` record was added.
+
+New JUnit tests verify correct and incorrect object creation, parsing, validation and record behavior.
+
+The original program output remained unchanged after the refactoring, confirming that the internal implementation was improved without changing external behavior.
+
+This project state provides the basis for Laboratory Work No. 3, where the domain objects can be extended into a type hierarchy and processed polymorphically.
