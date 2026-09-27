@@ -91,16 +91,19 @@ Windows:
 .\mvnw.cmd package
 ```
 
+**Version:** 1.1.0  
+**Git tag:** v1.1.0
+
 ## Run
 
 ```powershell
-java -jar target\lab01-1.0.0.jar
+java -jar target\lab01-1.1.0.jar
 ```
 
 Custom input and output:
 
 ```powershell
-java -jar target\lab01-1.0.0.jar --input data\input.csv --output out\report.txt
+java -jar target\lab01-1.1.0.jar --input data\input.csv --output out\report.txt
 ```
 
 ## Project Structure
