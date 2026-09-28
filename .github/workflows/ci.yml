@@ -37,9 +37,9 @@ jobs:
               if: runner.os == 'Windows'
               run: .\mvnw.cmd -B verify
 
-            - name: Upload JAR
-              uses: actions/upload-artifact@v4
-              with:
-                  name: lab02-${{ runner.os }}-${{ github.run_number }}
-                  path: target/lab01-1.1.0.jar
-                  if-no-files-found: error
+            -   name: Upload JAR
+                uses: actions/upload-artifact@v4
+                with:
+                    name: lab03-${{ runner.os }}-${{ github.run_number }}
+                    path: target/lab01-1.2.0.jar
+                    if-no-files-found: error
