@@ -1,6 +1,7 @@
 package ua.lpnu.kzp;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.junit.jupiter.api.Test;
@@ -10,7 +11,13 @@ class MembershipTest {
     @Test
     void constructorCreatesValidMembership() {
         Membership membership =
-            new Membership("Ivan", "Standard", 3, 24, 1500.0);
+            new MonthlyMembership(
+                "Ivan",
+                "Standard",
+                3,
+                24,
+                1500.0
+            );
 
         assertEquals("Ivan", membership.getClient());
         assertEquals("Standard", membership.getPlan());
@@ -23,7 +30,13 @@ class MembershipTest {
     void constructorRejectsNullClient() {
         assertThrows(
             NullPointerException.class,
-            () -> new Membership(null, "Standard", 3, 24, 1500.0)
+            () -> new MonthlyMembership(
+                null,
+                "Standard",
+                3,
+                24,
+                1500.0
+            )
         );
     }
 
@@ -31,7 +44,13 @@ class MembershipTest {
     void constructorRejectsEmptyClient() {
         assertThrows(
             IllegalArgumentException.class,
-            () -> new Membership("", "Standard", 3, 24, 1500.0)
+            () -> new MonthlyMembership(
+                "",
+                "Standard",
+                3,
+                24,
+                1500.0
+            )
         );
     }
 
@@ -39,7 +58,13 @@ class MembershipTest {
     void constructorRejectsEmptyPlan() {
         assertThrows(
             IllegalArgumentException.class,
-            () -> new Membership("Ivan", "", 3, 24, 1500.0)
+            () -> new MonthlyMembership(
+                "Ivan",
+                "",
+                3,
+                24,
+                1500.0
+            )
         );
     }
 
@@ -47,7 +72,13 @@ class MembershipTest {
     void constructorRejectsZeroMonths() {
         assertThrows(
             IllegalArgumentException.class,
-            () -> new Membership("Ivan", "Standard", 0, 24, 1500.0)
+            () -> new MonthlyMembership(
+                "Ivan",
+                "Standard",
+                0,
+                24,
+                1500.0
+            )
         );
     }
 
@@ -55,7 +86,13 @@ class MembershipTest {
     void constructorRejectsNegativeVisits() {
         assertThrows(
             IllegalArgumentException.class,
-            () -> new Membership("Ivan", "Standard", 3, -1, 1500.0)
+            () -> new MonthlyMembership(
+                "Ivan",
+                "Standard",
+                3,
+                -1,
+                1500.0
+            )
         );
     }
 
@@ -63,14 +100,27 @@ class MembershipTest {
     void constructorRejectsNegativePrice() {
         assertThrows(
             IllegalArgumentException.class,
-            () -> new Membership("Ivan", "Standard", 3, 24, -1.0)
+            () -> new MonthlyMembership(
+                "Ivan",
+                "Standard",
+                3,
+                24,
+                -1.0
+            )
         );
     }
 
     @Test
-    void fromCsvCreatesMembership() {
+    void fromCsvCreatesMonthlyMembership() {
         Membership membership =
-            Membership.fromCsv("Ivan;Standard;3;24;1500.00");
+            Membership.fromCsv(
+                "Ivan;Standard;3;24;1500.00"
+            );
+
+        assertInstanceOf(
+            MonthlyMembership.class,
+            membership
+        );
 
         assertEquals("Ivan", membership.getClient());
         assertEquals("Standard", membership.getPlan());
@@ -80,10 +130,30 @@ class MembershipTest {
     }
 
     @Test
+    void fromCsvCreatesAnnualMembership() {
+        Membership membership =
+            Membership.fromCsv(
+                "Maria;Premium;12;110;6500.00"
+            );
+
+        assertInstanceOf(
+            AnnualMembership.class,
+            membership
+        );
+
+        assertEquals(
+            MembershipKind.ANNUAL,
+            membership.getKind()
+        );
+    }
+
+    @Test
     void fromCsvRejectsWrongFieldCount() {
         assertThrows(
             IllegalArgumentException.class,
-            () -> Membership.fromCsv("Ivan;Standard;3;24")
+            () -> Membership.fromCsv(
+                "Ivan;Standard;3;24"
+            )
         );
     }
 
@@ -91,18 +161,27 @@ class MembershipTest {
     void fromCsvRejectsInvalidNumber() {
         assertThrows(
             IllegalArgumentException.class,
-            () -> Membership.fromCsv("Ivan;Standard;abc;24;1500.00")
+            () -> Membership.fromCsv(
+                "Ivan;Standard;abc;24;1500.00"
+            )
         );
     }
 
     @Test
     void visitsPriceUsesValueEquality() {
-        VisitsPrice first = new VisitsPrice(24, 1500.0);
-        VisitsPrice second = new VisitsPrice(24, 1500.0);
+        VisitsPrice first =
+            new VisitsPrice(24, 1500.0);
+
+        VisitsPrice second =
+            new VisitsPrice(24, 1500.0);
 
         assertEquals(first, second);
         assertEquals(24, first.visits());
-        assertEquals(1500.0, first.price(), 0.0001);
+        assertEquals(
+            1500.0,
+            first.price(),
+            0.0001
+        );
     }
 
     @Test

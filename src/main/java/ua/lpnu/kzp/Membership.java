@@ -4,45 +4,83 @@ import java.util.Locale;
 import java.util.Objects;
 
 /**
- * Represents a gym membership record.
+ * Represents the common base type for gym memberships.
  */
-public final class Membership {
+public abstract class Membership {
 
     private final String client;
     private final String plan;
     private final int months;
     private final int visits;
     private final double price;
+    private final MembershipKind kind;
 
     /**
-     * Creates a valid membership.
+     * Creates a validated membership.
      *
      * @param client client name
      * @param plan membership plan
      * @param months membership duration in months
      * @param visits number of visits
      * @param price membership price
+     * @param kind membership kind
      */
-    public Membership(
+    protected Membership(
         String client,
         String plan,
         int months,
         int visits,
-        double price
+        double price,
+        MembershipKind kind
     ) {
-        this.client = Objects.requireNonNull(
-            client,
-            "Client cannot be null"
+        this(
+            validateClient(client),
+            validatePlan(plan),
+            validateMonths(months),
+            validateVisits(visits),
+            validatePrice(price),
+            validateKind(kind),
+            true
         );
+    }
 
-        this.plan = Objects.requireNonNull(
-            plan,
-            "Plan cannot be null"
-        );
+    private Membership(
+        String client,
+        String plan,
+        int months,
+        int visits,
+        double price,
+        MembershipKind kind,
+        boolean validated
+    ) {
+        this.client = client;
+        this.plan = plan;
+        this.months = months;
+        this.visits = visits;
+        this.price = price;
+        this.kind = kind;
+    }
+
+    private static String validateClient(String client) {
+        if (client == null) {
+            throw new NullPointerException(
+                "Client cannot be null"
+            );
+        }
 
         if (client.isBlank()) {
             throw new IllegalArgumentException(
                 "Client cannot be empty"
+            );
+        }
+
+        return client;
+    }
+
+    private static String validatePlan(String plan) {
+        if (plan == null) {
+            throw new NullPointerException(
+                "Plan cannot be null"
             );
         }
 
@@ -52,38 +90,53 @@ public final class Membership {
             );
         }
 
+        return plan;
+    }
+
+    private static int validateMonths(int months) {
         if (months <= 0) {
             throw new IllegalArgumentException(
                 "Months must be positive"
             );
         }
 
+        return months;
+    }
+
+    private static int validateVisits(int visits) {
         if (visits < 0) {
             throw new IllegalArgumentException(
                 "Visits cannot be negative"
             );
         }
 
+        return visits;
+    }
+
+    private static double validatePrice(double price) {
         if (price < 0 || !Double.isFinite(price)) {
             throw new IllegalArgumentException(
                 "Price must be finite and non-negative"
             );
         }
 
-        this.months = months;
-        this.visits = visits;
-        this.price = price;
+        return price;
+    }
+
+    private static MembershipKind validateKind(
+        MembershipKind kind
+    ) {
+        return Objects.requireNonNull(
+            kind,
+            "Membership kind cannot be null"
+        );
     }
 
     /**
      * Creates a membership from a CSV line.
      *
-     * @param line CSV line in the format
-     *             client;plan;months;visits;price
+     * @param line CSV line
      * @return parsed membership
-     * @throws IllegalArgumentException if the CSV structure,
-     *                                  numeric format,
-     *                                  or values are invalid
      */
     public static Membership fromCsv(String line) {
         Objects.requireNonNull(
@@ -102,20 +155,21 @@ public final class Membership {
         try {
             String client = fields[0].trim();
             String plan = fields[1].trim();
+            int months = Integer.parseInt(fields[2].trim());
+            int visits = Integer.parseInt(fields[3].trim());
+            double price = Double.parseDouble(fields[4].trim());
 
-            int months = Integer.parseInt(
-                fields[2].trim()
-            );
+            if (months >= 12) {
+                return new AnnualMembership(
+                    client,
+                    plan,
+                    months,
+                    visits,
+                    price
+                );
+            }
 
-            int visits = Integer.parseInt(
-                fields[3].trim()
-            );
-
-            double price = Double.parseDouble(
-                fields[4].trim()
-            );
-
-            return new Membership(
+            return new MonthlyMembership(
                 client,
                 plan,
                 months,
@@ -132,11 +186,18 @@ public final class Membership {
     }
 
     /**
+     * Calculates the effective cost of one visit.
+     *
+     * @return cost per visit
+     */
+    public abstract double costPerVisit();
+
+    /**
      * Returns the client name.
      *
      * @return client name
      */
-    public String getClient() {
+    public final String getClient() {
         return client;
     }
 
@@ -145,16 +206,16 @@ public final class Membership {
      *
      * @return membership plan
      */
-    public String getPlan() {
+    public final String getPlan() {
         return plan;
     }
 
     /**
-     * Returns the membership duration in months.
+     * Returns the membership duration.
      *
-     * @return membership duration in months
+     * @return duration in months
      */
-    public int getMonths() {
+    public final int getMonths() {
         return months;
     }
 
@@ -163,7 +224,7 @@ public final class Membership {
      *
      * @return number of visits
      */
-    public int getVisits() {
+    public final int getVisits() {
         return visits;
     }
 
@@ -172,8 +233,59 @@ public final class Membership {
      *
      * @return membership price
      */
-    public double getPrice() {
+    public final double getPrice() {
         return price;
+    }
+
+    /**
+     * Returns the membership kind.
+     *
+     * @return membership kind
+     */
+    public final MembershipKind getKind() {
+        return kind;
+    }
+
+    /**
+     * Compares memberships by concrete subtype and stored values.
+     *
+     * @param other object to compare
+     * @return true if memberships are logically equal
+     */
+    @Override
+    public final boolean equals(Object other) {
+        if (this == other) {
+            return true;
+        }
+
+        if (other == null || getClass() != other.getClass()) {
+            return false;
+        }
+
+        Membership membership = (Membership) other;
+
+        return months == membership.months
+            && visits == membership.visits
+            && Double.compare(price, membership.price) == 0
+            && client.equals(membership.client)
+            && plan.equals(membership.plan);
+    }
+
+    /**
+     * Returns a hash code consistent with equals.
+     *
+     * @return membership hash code
+     */
+    @Override
+    public final int hashCode() {
+        return Objects.hash(
+            getClass(),
+            client,
+            plan,
+            months,
+            visits,
+            price
+        );
     }
 
     /**

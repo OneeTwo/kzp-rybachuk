@@ -111,6 +111,14 @@ public class Main {
                     membership.getPrice()
                 );
 
+                double costPerVisit = membership.costPerVisit();
+
+                if (!Double.isFinite(costPerVisit) || costPerVisit < 0) {
+                    throw new IllegalStateException(
+                        "Invalid cost per visit"
+                    );
+                }
+
                 totalVisits += visitsPrice.visits();
                 totalRevenue += visitsPrice.price();
                 maxMonths = Math.max(
