@@ -30,7 +30,7 @@ public class Main {
         }
 
         if (args.length > 0 && "--version".equals(args[0])) {
-            System.out.println("lab01 1.1.0");
+            System.out.println("lab01 1.2.0");
             return;
         }
 

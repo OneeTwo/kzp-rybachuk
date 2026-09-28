@@ -1,37 +1,45 @@
-# Laboratory Work No. 2 Report
+# Laboratory Work No. 3 Report
 
 ## 1. Topic and Variant
 
-**Topic:** Classes, Record and Encapsulation in a Java Project  
-**Laboratory Work:** No. 2  
+**Topic:** Inheritance, Interfaces and Polymorphism in a Java Project  
+**Laboratory Work:** No. 3  
 **Variant:** 20 — Gym  
 **Operating System:** Windows 11
 
 **Repository:**  
 https://github.com/OneeTwo/kzp-rybachuk
 
+**Version:** 1.2.0  
+**Git tag:** v1.2.0
+
 ## 2. Objective
 
-The objective of this laboratory work was to refactor the program from LAB_01 by replacing direct processing of CSV fields with domain objects.
+The objective of this laboratory work was to extend the domain model created in LAB_02 using inheritance and polymorphism.
 
-The program now uses:
+The new implementation introduces:
 
-- a `Membership` entity class;
-- private final fields;
-- constructor validation;
-- a static `fromCsv` factory method;
-- a `VisitsPrice` record;
-- JUnit 5 tests for valid and invalid data.
+- an abstract `Membership` base class;
+- `MonthlyMembership` and `AnnualMembership` subclasses;
+- the `MembershipKind` enum;
+- a polymorphic `costPerVisit()` method;
+- consistent `equals()` and `hashCode()`;
+- equality verification using `HashSet`;
+- new JUnit tests for the hierarchy and polymorphic behavior.
 
-The external behavior of the program remains compatible with LAB_01.
+The external report and the original statistics remain unchanged.
 
-## 3. State Before and After Refactoring
+## 3. State Before and After LAB_03
 
-### Before LAB_02
+### Before LAB_03
 
-In LAB_01, every CSV line was split directly inside `Main.java`.
+LAB_02 contained one concrete domain entity:
 
-The program manually extracted:
+```text
+Membership
+```
+
+It stored:
 
 ```text
 client
@@ -41,46 +49,41 @@ visits
 price
 ```
 
-Validation and numeric conversion were also performed directly in the processing loop.
-
-Statistics were stored in separate variables:
-
-```text
-validCount
-totalVisits
-totalRevenue
-maxMonths
-```
-
-### After LAB_02
-
-CSV data is now converted into `Membership` objects.
+CSV records were converted using:
 
 ```java
-Membership membership = Membership.fromCsv(line);
+Membership.fromCsv(line)
 ```
 
-Valid objects are stored in:
+### After LAB_03
 
-```java
-List<Membership>
-```
+`Membership` became an abstract base class.
 
-Validation rules are located inside the `Membership` class instead of being duplicated in `Main`.
-
-A `VisitsPrice` record is used as an immutable helper value during statistics calculation.
-
-The report format and calculated statistics remain unchanged.
-
-## 4. Membership Entity
-
-The main domain class is:
+The hierarchy is:
 
 ```text
 Membership
+├── MonthlyMembership
+└── AnnualMembership
 ```
 
-It contains the following private final fields:
+Common fields and validation remain in `Membership`.
+
+Different membership behavior is implemented in subclasses through:
+
+```java
+costPerVisit()
+```
+
+## 4. Base Type
+
+The common base type is:
+
+```java
+public abstract class Membership
+```
+
+It contains:
 
 ```java
 private final String client;
@@ -88,119 +91,194 @@ private final String plan;
 private final int months;
 private final int visits;
 private final double price;
+private final MembershipKind kind;
 ```
 
-The object is immutable because its fields are `final` and no setters are provided.
+The common validation rules are:
 
-### Validation
+- client must not be null or blank;
+- plan must not be null or blank;
+- months must be greater than zero;
+- visits must not be negative;
+- price must be finite and non-negative;
+- membership kind must not be null.
 
-The constructor checks the following conditions:
-
-- `client` must not be null;
-- `client` must not be blank;
-- `plan` must not be null;
-- `plan` must not be blank;
-- `months` must be greater than 0;
-- `visits` must be greater than or equal to 0;
-- `price` must be finite and greater than or equal to 0.
-
-Example:
+The base class declares:
 
 ```java
-Membership membership =
-        new Membership("Ivan", "Standard", 3, 24, 1500.0);
+public abstract double costPerVisit();
 ```
 
-Invalid objects cannot be created because validation is performed inside the constructor.
+The class is abstract because a generic membership does not define one specific cost-per-visit algorithm.
 
-The class also provides getter methods for reading its values.
+## 5. Subtypes
 
-The `toString()` method uses `Locale.ROOT` so that numeric formatting does not depend on the operating system locale.
+### MonthlyMembership
 
-## 5. Factory Method and Record
+`MonthlyMembership` represents memberships shorter than 12 months.
 
-### fromCsv
+Rule:
 
-The static factory method:
+```text
+months < 12
+```
+
+Its polymorphic method calculates:
+
+```text
+price / visits
+```
+
+If visits are zero, the method returns `0.0`.
+
+### AnnualMembership
+
+`AnnualMembership` represents memberships of 12 months or more.
+
+Rule:
+
+```text
+months >= 12
+```
+
+Its cost-per-visit calculation uses a 10% annual benefit:
+
+```text
+price * 0.90 / visits
+```
+
+If visits are zero, the method returns `0.0`.
+
+The different formulas demonstrate different subtype behavior.
+
+They do not modify the original revenue statistics.
+
+## 6. MembershipKind Enum
+
+The project contains:
 
 ```java
-Membership.fromCsv(line)
+public enum MembershipKind {
+    MONTHLY("Monthly"),
+    ANNUAL("Annual")
+}
 ```
 
-creates a `Membership` object from one CSV line.
+The enum represents a fixed set of membership categories.
 
-Expected format:
-
-```text
-client;plan;months;visits;price
-```
-
-Example:
-
-```text
-Ivan;Standard;3;24;1500.00
-```
-
-The method:
-
-1. checks that the line is not null;
-2. splits the line into fields;
-3. verifies that exactly five fields exist;
-4. converts numeric values;
-5. creates a validated `Membership` object.
-
-If a number cannot be parsed, an `IllegalArgumentException` is generated.
-
-### VisitsPrice Record
-
-The project also contains:
+The base class stores a `MembershipKind` value and provides access through:
 
 ```java
-public record VisitsPrice(int visits, double price)
+getKind()
 ```
 
-The record stores two immutable values:
+## 7. equals and hashCode
 
-- number of visits;
-- membership price.
+`Membership` implements consistent `equals()` and `hashCode()` methods.
 
-It validates that:
+Logical equality includes:
 
-- visits are non-negative;
-- price is finite and non-negative.
+- concrete subtype;
+- client;
+- plan;
+- months;
+- visits;
+- price.
 
-A Java record automatically provides component access methods, `equals()`, `hashCode()` and `toString()`.
+The concrete class is included in equality using:
 
-## 6. Testing
+```java
+getClass()
+```
 
-The previous LAB_01 tests were preserved.
+Therefore, objects of different membership subtypes are not considered equal.
 
-A new test class was added:
+Correct behavior is verified using `HashSet`.
+
+When two logically equal memberships are inserted, only one unique element remains.
+
+## 8. Polymorphism
+
+Objects are stored in:
+
+```java
+List<Membership>
+```
+
+The processing code calls:
+
+```java
+double costPerVisit = membership.costPerVisit();
+```
+
+The variable has type `Membership`, but Java calls the implementation belonging to the actual object.
+
+For example:
 
 ```text
+MonthlyMembership.costPerVisit()
+```
+
+or:
+
+```text
+AnnualMembership.costPerVisit()
+```
+
+The program does not use:
+
+```java
+if (membership instanceof MonthlyMembership)
+```
+
+to select behavior.
+
+This demonstrates runtime polymorphism.
+
+### Inheritance or Composition
+
+Inheritance was selected because `MonthlyMembership` and `AnnualMembership` are both types of `Membership`.
+
+They share common fields and validation but have different behavior.
+
+`VisitsPrice` remains a helper record and is used through composition rather than inheritance.
+
+## 9. Testing
+
+The previous tests were preserved and adapted because `Membership` became abstract.
+
+Test files:
+
+```text
+MainTest.java
 MembershipTest.java
+MembershipHierarchyTest.java
 ```
 
-The new tests check:
+The tests verify:
 
-- creation of a valid `Membership`;
-- getters;
-- null client;
-- empty client;
-- empty plan;
-- zero months;
-- negative visits;
-- negative price;
-- correct `fromCsv`;
-- incorrect number of CSV fields;
-- invalid numeric format;
-- `VisitsPrice` value equality;
-- invalid values in `VisitsPrice`.
+- valid common fields;
+- null and blank values;
+- invalid numeric values;
+- CSV parsing;
+- creation of monthly memberships;
+- creation of annual memberships;
+- `MembershipKind`;
+- monthly cost per visit;
+- annual cost per visit;
+- polymorphic behavior;
+- zero visits;
+- equality;
+- equal hash codes;
+- `HashSet` behavior;
+- inequality of different subtypes;
+- compatibility with previous statistics.
 
-Tests were executed with:
+Commands:
 
 ```powershell
 .\mvnw.cmd test
+.\mvnw.cmd verify
 ```
 
 Result:
@@ -209,21 +287,43 @@ Result:
 BUILD SUCCESS
 ```
 
-The previous tests also continue to pass after the refactoring.
+SpotBugs also completed successfully.
 
-## 7. Infrastructure
+During development SpotBugs initially reported:
 
-The infrastructure from LAB_01 was preserved:
+```text
+CT_CONSTRUCTOR_THROW
+```
+
+for the abstract `Membership` constructor.
+
+The constructor was corrected by validating arguments before assigning the object state.
+
+After correction:
+
+```text
+BUILD SUCCESS
+```
+
+## 10. Infrastructure
+
+The project continues to use:
 
 - Java 21;
 - Maven;
 - Maven Wrapper;
 - JUnit 5;
 - SpotBugs;
-- Maven packaging;
+- Maven Shade Plugin;
 - GitHub Actions.
 
-The following commands are used:
+Current version:
+
+```text
+1.2.0
+```
+
+Commands:
 
 ```powershell
 .\mvnw.cmd test
@@ -231,77 +331,60 @@ The following commands are used:
 .\mvnw.cmd package
 ```
 
-The packaged application was also started successfully:
+Run JAR:
 
 ```powershell
-java -jar target\lab01-1.1.0.jar
+java -jar target\lab01-1.2.0.jar
 ```
 
-Program output:
+Version check:
+
+```powershell
+java -jar target\lab01-1.2.0.jar --version
+```
+
+Result:
 
 ```text
-Line 4 skipped: invalid numeric value
-Line 5 skipped: invalid number format
-Valid records: 3
-Average visits: 47.33
-Total revenue: 8700.00
-Longest membership: 12 months
+lab01 1.2.0
 ```
 
-The JAR therefore preserves the behavior of the previous laboratory work.
-
-GitHub Actions is configured to run the project checks on:
+GitHub Actions runs on:
 
 - Windows;
 - Ubuntu;
 - macOS.
 
-Final CI verification is performed on the LAB_02 Pull Request.
+The generated JAR is uploaded as a GitHub Actions artifact.
 
-**Version:** 1.1.0  
-**Git tag:** v1.1.0  
-**Successful CI:** https://github.com/OneeTwo/kzp-rybachuk/actions/runs/36349383729
+**Final CI:** will be added after the final Pull Request run.  
+**JAR artifact:** will be available from the final GitHub Actions run.  
+**Git tag:** v1.2.0.
 
-## 8. GitHub Issues and Pull Request
+## 11. GitHub Issues and Pull Request
 
-The work was performed in the separate branch:
+The work was performed in:
 
 ```text
-LAB_02
+LAB_03
 ```
-
-The following GitHub Issues were created:
 
 | Issue | Change | Verification |
 |---|---|---|
-| Implement Membership entity | Added `Membership.java` | Constructor and getter tests |
-| Add Membership validation and CSV parsing | Added validation and `fromCsv()` | Invalid and valid CSV tests |
-| Implement VisitsPrice record | Added `VisitsPrice.java` | Record equality and validation tests |
-| Add LAB_02 tests | Added `MembershipTest.java` | Maven test |
-| Update LAB_02 documentation | Updated README and REPORT | Documentation review |
+| #26 | Implement LAB_03 Membership hierarchy | Compilation and hierarchy tests |
+| #27 | Implement LAB_03 membership subtypes | Subtype and polymorphism tests |
+| #28 | Add MembershipKind enum | Enum tests |
+| #29 | Implement Membership equality | HashSet and hash-code tests |
+| #30 | Add LAB_03 tests | Maven test and verify |
+| #31 | Update LAB_03 documentation | Documentation and build verification |
 
 The final Pull Request merges:
 
 ```text
-LAB_02 → main
+LAB_03 -> main
 ```
 
-The Pull Request is created after the implementation and documentation are completed.
-
-## 9. Behavior Comparison
-
-The purpose of the refactoring was to change the internal structure without changing the external result.
-
-### LAB_01 result
-
-```text
-Line 4 skipped: invalid numeric value
-Line 5 skipped: invalid number format
-Valid records: 3
-Average visits: 47.33
-Total revenue: 8700.00
-Longest membership: 12 months
-```
+## 12. Behavior Comparison
 
 ### LAB_02 result
 
@@ -314,135 +397,160 @@ Total revenue: 8700.00
 Longest membership: 12 months
 ```
 
+### LAB_03 result
+
+```text
+Line 4 skipped: invalid numeric value
+Line 5 skipped: invalid number format
+Valid records: 3
+Average visits: 47.33
+Total revenue: 8700.00
+Longest membership: 12 months
+```
+
 The results are identical.
 
-Therefore, the internal model was refactored successfully without changing the external behavior of the application.
+LAB_02 used one concrete `Membership` class.
 
-## 10. Academic Integrity
+LAB_03 uses:
 
-ChatGPT was used as an AI assistant during this laboratory work.
+```text
+Membership
+├── MonthlyMembership
+└── AnnualMembership
+```
+
+The internal model changed while the external report remained compatible.
+
+## 13. Academic Integrity
+
+ChatGPT was used as an AI assistant during LAB_03.
 
 ### AI contribution
 
 ChatGPT was used for:
 
-- clarification of LAB_02 requirements;
-- planning the refactoring;
-- recommendations for the `Membership` entity;
-- recommendations for constructor validation;
-- implementation guidance for `fromCsv`;
-- recommendations for the `VisitsPrice` record;
-- preparation of JUnit test cases;
+- analysis of LAB_03 requirements;
+- planning the class hierarchy;
+- recommendations for inheritance and polymorphism;
+- creation of enum and equality logic;
+- preparation of JUnit tests;
+- analysis of the SpotBugs error;
 - Git and GitHub workflow guidance;
-- documentation structure;
-- debugging and verification recommendations.
+- documentation preparation.
 
 ### Accepted recommendations
 
 The following recommendations were used:
 
-- creating a separate `Membership` class;
-- using private final fields;
-- moving validation into the constructor;
-- using `fromCsv` for parsing;
-- creating the `VisitsPrice` record;
-- adding tests for positive and negative cases;
-- preserving the external report format.
+- making `Membership` abstract;
+- creating `MonthlyMembership`;
+- creating `AnnualMembership`;
+- creating `MembershipKind`;
+- using `costPerVisit()` as the polymorphic method;
+- implementing `equals()` and `hashCode()`;
+- testing equality using `HashSet`;
+- preserving the previous output.
 
-### Corrected or reviewed recommendations
+### Corrected recommendations
 
-All generated code was reviewed before use.
+The first constructor implementation generated the SpotBugs `CT_CONSTRUCTOR_THROW` warning.
 
-The validation of `months` was adjusted to preserve the behavior of LAB_01, where zero months is considered invalid.
+The implementation was changed so validation is performed before the object state is assigned.
 
-The existing program output was also compared before and after the refactoring.
+The exact subtype classification and cost-per-visit formulas were project decisions because the methodology defines the required hierarchy and polymorphic operation but does not provide an exact formula.
 
 ### My contribution
 
 My contribution included:
 
-- creating and managing the Git branch;
+- creating the LAB_03 branch;
 - creating GitHub Issues;
-- adding the source files to the project;
-- reviewing and integrating the code;
-- running Maven tests;
-- running the packaged JAR;
-- checking program output;
-- committing and pushing the implementation;
-- reviewing the documentation.
+- adding and reviewing source files;
+- running tests;
+- running SpotBugs;
+- debugging errors;
+- verifying the JAR;
+- comparing LAB_02 and LAB_03 output;
+- updating Maven and CI configuration;
+- committing and pushing the implementation.
 
-All submitted code was reviewed and understood before being included in the project.
+All submitted code was reviewed and understood before inclusion in the project.
 
-## 11. Control Questions
+## 14. Control Questions
 
-1. **What problem does an entity class solve compared with strings and parallel variables?**  
-   It groups related data and validation rules into one object instead of spreading them across the program.
+1. **What common problem does the base type solve?**  
+   It stores shared membership fields and validation rules in one place.
 
-2. **What do private and final mean for class fields?**  
-   `private` prevents direct access from outside the class, while `final` prevents reassignment after construction.
+2. **What is the difference between extends and implements?**  
+   `extends` inherits from a class, while `implements` provides the behavior required by an interface.
 
-3. **What is encapsulation?**  
-   Encapsulation hides the internal state of an object and allows access only through controlled methods.
+3. **Why can a base class be abstract?**  
+   It represents common behavior while preventing creation of an incomplete generic object.
 
-4. **Why are invariants checked in the constructor?**  
-   It prevents the creation of an object with an invalid state.
+4. **What does super(...) do?**  
+   It calls the constructor of the parent class.
 
-5. **What is the difference between Objects.requireNonNull and isBlank?**  
-   `requireNonNull` checks whether the reference is null, while `isBlank` checks whether a string is empty or contains only whitespace.
+5. **What does @Override do?**  
+   It verifies that a method overrides a method from the parent type.
 
-6. **Why can the absence of setters help preserve a valid state?**  
-   Values cannot be replaced with unchecked values after the object has been created.
+6. **What is polymorphism?**  
+   It allows the same base-type method call to execute different implementations depending on the actual object.
 
-7. **What does a record automatically provide?**  
-   A constructor, component access methods, `equals`, `hashCode` and `toString`.
+7. **When should an interface or abstract class be used?**  
+   An abstract class is useful when objects share state and implementation. An interface is useful mainly for defining a common capability.
 
-8. **How is a record different from a normal entity class?**  
-   A record is mainly intended as a compact immutable data carrier, while a normal class gives more control over behavior and internal structure.
+8. **What is an is-a relationship?**  
+   It means that one type is a specialized form of another type.
 
-9. **Why does a record not guarantee deep immutability?**  
-   If a record contains a mutable object such as a list, the contents of that object can still be changed.
+9. **Why use enum?**  
+   It limits a value to a fixed set of valid categories.
 
-10. **Why is the static fromCsv method needed?**  
-    It provides one clear place for converting a CSV line into a domain object.
+10. **Why can enum values be compared with ==?**  
+    Each enum constant is represented by one fixed instance.
 
-11. **Where should an error from parsing one line be handled?**  
-    In the loop that processes the input lines so one invalid line does not stop the whole program.
+11. **What rule connects equals and hashCode?**  
+    Equal objects must have the same hash code.
 
-12. **Why must an invalid record not be added before validation finishes?**  
-    Otherwise invalid values could affect the statistics.
+12. **Why are mutable HashMap keys dangerous?**  
+    Changing a field used by `hashCode()` can make the key impossible to find correctly.
 
-13. **What is the purpose of toString and why does it not replace CSV formatting?**  
-    `toString` gives a readable representation of an object, while CSV has a specific data-exchange format.
+13. **Why can different subtypes be unequal?**  
+    Their concrete type can be part of their logical identity.
 
-14. **Why is Locale.ROOT used?**  
-    It keeps numeric formatting consistent on different operating systems and locales.
+14. **How does a polymorphic collection work?**  
+    Objects of different subtypes are stored through their common base type.
 
-15. **What does AAA mean in testing?**  
-    Arrange, Act, Assert: prepare the data, perform the operation, and verify the result.
+15. **How do tests prove different subtype behavior?**  
+    They call `costPerVisit()` for monthly and annual memberships and verify different results.
 
-16. **Which negative cases should be tested for the constructor?**  
-    Null or blank text, invalid numeric boundaries, negative values, NaN and infinite values where applicable.
+16. **How is equality tested in HashSet?**  
+    Two equal memberships are added and the set is checked to contain only one element.
 
-17. **How can we prove that refactoring did not change external behavior?**  
-    By running the same input before and after the refactoring and comparing the output.
+17. **What do sealed and permits do?**  
+    They restrict which classes are allowed to extend a type.
 
-18. **Why must the previous tests continue to pass?**  
-    They verify that functionality implemented in LAB_01 was not broken by the refactoring.
+18. **Why should switch not replace polymorphism?**  
+    Different behavior should remain inside each subtype instead of being duplicated in external code.
 
-19. **Which infrastructure files are reused from LAB_01?**  
-    `pom.xml`, Maven Wrapper files, GitHub Actions configuration, project structure and existing tests.
+19. **What previous behavior must remain?**  
+    Previous tests, CSV format, calculated statistics and report output must remain compatible.
 
-20. **Which line best demonstrates encapsulation in this implementation?**  
-    A declaration such as `private final String client;` because the field cannot be accessed directly from outside the class and cannot be reassigned after construction.
+20. **What best demonstrates polymorphism in this project?**  
+    Calling `membership.costPerVisit()` through a `Membership` reference while subclasses provide different implementations.
 
-## 12. Conclusion
+## 15. Conclusion
 
-In Laboratory Work No. 2, the gym membership application from LAB_01 was refactored using object-oriented programming principles.
+In LAB_03, the gym membership model was converted into a polymorphic hierarchy.
 
-A `Membership` entity with private final fields and constructor validation was created. CSV parsing was moved into the `fromCsv` factory method, and the immutable `VisitsPrice` record was added.
+The abstract `Membership` class stores common state and validation.
 
-New JUnit tests verify correct and incorrect object creation, parsing, validation and record behavior.
+`MonthlyMembership` and `AnnualMembership` provide different implementations of `costPerVisit()`.
 
-The original program output remained unchanged after the refactoring, confirming that the internal implementation was improved without changing external behavior.
+`MembershipKind` represents fixed membership categories.
 
-This project state provides the basis for Laboratory Work No. 3, where the domain objects can be extended into a type hierarchy and processed polymorphically.
+`equals()` and `hashCode()` allow membership objects to work correctly in hash-based collections.
+
+The previous tests and external output remain compatible.
+
+The resulting model provides the foundation for the next laboratory work.
