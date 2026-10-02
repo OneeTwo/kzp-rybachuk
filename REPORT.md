@@ -1,42 +1,72 @@
-# Laboratory Work No. 4 Report
+# Laboratory Work No. 5 Report
 
 ## 1. Topic, Number and Variant
 
-**Topic:** Stream Data Processing in a Java Project  
-**Laboratory Work:** No. 4  
+**Topic:** Parameterized Storage, Exceptions and CSV Export in a Java Project  
+**Laboratory Work:** No. 5  
 **Variant:** 20 — Gym  
-**Domain:** Gym Membership Management  
 **Operating System:** Windows 11
 
 **Repository:**  
 https://github.com/OneeTwo/kzp-rybachuk
 
-**Version:** 1.3.0  
-**Git tag:** v1.3.0 — to be created after the final Pull Request is merged.
+**Branch:** `LAB_05`  
+**Version:** `1.4.0`
+
+The subject area remains the same as in the previous laboratory works: processing gym membership information.
+
+For variant 20 the LAB_05 persistence model is:
+
+```text
+MembershipRecord:
+customer   : String
+kind       : MembershipKind
+startDate  : LocalDate
+endDate    : LocalDate
+visits     : int
+```
+
+CSV column names:
+
+```text
+клієнт
+тип
+початок
+кінець
+відвідування
+```
+
+Round-trip key:
+
+```text
+customer + startDate
+```
 
 ## 2. Objective
 
-The objective of LAB_04 was to replace the main manual collection-processing calculations from the previous project state with declarative Java Stream API pipelines while preserving the external behavior of the application.
+The objective of LAB_05 was to complete data persistence in the existing Java project without creating a new repository or changing the subject area.
 
-The implementation now provides:
+The following functionality was added:
 
-- filtering through `filter`;
-- transformation through `map`;
-- grouping through `Collectors.groupingBy`;
-- summary statistics through `Collectors.summarizingInt`;
-- top-N processing through `sorted` and `limit`;
-- a compound comparator using `reversed` and `thenComparing`;
-- search through `Optional`;
-- Stream API calculations in the main report;
-- tests for normal, boundary and empty cases.
+- generic `Repository<T>`;
+- custom checked `DataStorageException`;
+- runtime `@CsvColumn` annotation;
+- reflection-based generic CSV exporter;
+- deterministic CSV column order;
+- CSV escaping;
+- UTF-8 reading and writing;
+- CSV document parser;
+- domain-specific `MembershipRecord` restoration;
+- object → CSV → object round-trip;
+- positive, boundary and negative tests.
 
-The previous polymorphic model, CSV input format and report output remain compatible with LAB_03.
+The previous polymorphic model, Stream API queries, Maven configuration and external report output were preserved.
 
-## 3. State Before and After LAB_04
+## 3. State Before and After LAB_05
 
-### Before LAB_04
+### Before LAB_05
 
-LAB_03 already contained the polymorphic hierarchy:
+The application already contained:
 
 ```text
 Membership
@@ -44,650 +74,662 @@ Membership
 └── AnnualMembership
 ```
 
-Statistics in `Main.java` were calculated by manually iterating through the collection.
-
-For example, the previous implementation accumulated:
+It also contained:
 
 ```text
-totalVisits
-totalRevenue
-maxMonths
-```
-
-inside a `for` loop.
-
-### After LAB_04
-
-Collection calculations are expressed with Stream API operations.
-
-Examples:
-
-```java
-memberships.stream()
-    .mapToDouble(Membership::getPrice)
-    .sum();
-```
-
-and:
-
-```java
-memberships.stream()
-    .mapToInt(Membership::getMonths)
-    .max()
-    .orElse(0);
-```
-
-A new class:
-
-```text
+MembershipKind
 MembershipQueries
 ```
 
-contains separate named methods for the five required queries and Optional search.
+and Stream API processing introduced in LAB_04.
 
-The input parsing loop remains imperative because it performs sequential file-line parsing, validation and error reporting. The domain collection queries and report calculations are the parts refactored to Stream API.
+Objects read from the original input file were stored directly in an in-memory list.
 
-## 4. Data Contract
+There was no universal persistence layer for:
 
-The previous LAB_03 model is preserved.
+```text
+Java object -> CSV -> Java object
+```
 
-### Base Type
+### After LAB_05
+
+Direct collection storage in `Main` was replaced by:
 
 ```java
-Membership
+Repository<Membership>
 ```
 
-is the abstract common type.
-
-### Subtypes
+LAB_05 additionally introduced:
 
 ```text
-MonthlyMembership
-AnnualMembership
+Repository<T>
+DataStorageException
+CsvColumn
+CsvExporter
+CsvParser
+MembershipRecord
+MembershipCsvReader
+Lab05RoundTrip
 ```
 
-### Enum
+A separate flat `MembershipRecord` model is used for persistence while the previous polymorphic membership hierarchy remains unchanged.
+
+The application can now perform:
+
+```text
+MembershipRecord objects
+        ↓
+Repository<MembershipRecord>
+        ↓
+CsvExporter
+        ↓
+UTF-8 CSV
+        ↓
+CsvParser
+        ↓
+MembershipCsvReader
+        ↓
+restored MembershipRecord objects
+        ↓
+equals()
+```
+
+## 4. Repository<T>
+
+The generic repository is declared as:
 
 ```java
-MembershipKind
+public final class Repository<T>
 ```
 
-contains:
+The type parameter `T` determines the type of objects that can be stored.
 
-```text
-MONTHLY
-ANNUAL
-```
-
-### Fields
-
-The existing membership model contains:
-
-```text
-client
-plan
-months
-visits
-price
-kind
-```
-
-### Validation Rules
-
-The main common rules are:
-
-- client must not be null or blank;
-- plan must not be null or blank;
-- months must be greater than zero;
-- visits must not be negative;
-- price must be finite and non-negative;
-- membership kind must not be null.
-
-`MonthlyMembership` requires:
-
-```text
-months < 12
-```
-
-`AnnualMembership` requires:
-
-```text
-months >= 12
-```
-
-### Input Format
-
-The existing CSV contract remains unchanged:
-
-```text
-client;plan;months;visits;price
-```
-
-The LAB_04 variant table describes active memberships using start and end dates, but changing the model to those fields would break the data contract inherited from previous laboratories.
-
-Therefore, the previous model is preserved.
-
-For this project, an active membership is defined as a membership with at least one recorded visit:
-
-```text
-visits > 0
-```
-
-This rule is used consistently in implementation and tests.
-
-## 5. Five Stream API Queries
-
-All queries are located in:
-
-```text
-MembershipQueries.java
-```
-
-### Query 1 — Filter Active Memberships
-
-Method:
+For example:
 
 ```java
-activeMemberships(...)
+Repository<Membership> repository =
+    new Repository<>();
 ```
 
-Source:
+accepts `Membership` objects.
 
-```text
-List<Membership>
-```
-
-Pipeline:
-
-```text
-memberships
--> stream()
--> filter(visits > 0)
--> toList()
-```
-
-Implementation:
+The LAB_05 round-trip demonstration uses:
 
 ```java
-return memberships.stream()
-    .filter(membership -> membership.getVisits() > 0)
-    .toList();
+Repository<MembershipRecord> repository =
+    new Repository<>();
 ```
 
-Result type:
-
-```text
-List<Membership>
-```
-
-For the six-record test dataset, five memberships are active.
-
-### Query 2 — Map Client Names
-
-Method:
+### add
 
 ```java
-clientNames(...)
+public void add(T item)
 ```
 
-Pipeline:
+adds a non-null object to the repository.
 
-```text
-memberships
--> stream()
--> map(client)
--> toList()
-```
-
-Implementation:
+### all
 
 ```java
-return memberships.stream()
-    .map(Membership::getClient)
-    .toList();
-```
-
-Result type:
-
-```text
-List<String>
-```
-
-Actual result:
-
-```text
-[Ivan, Maria, Oleh, Anna, Taras, Ivan]
-```
-
-### Query 3 — Group Visits by Membership Kind
-
-Method:
-
-```java
-visitsByKind(...)
-```
-
-Pipeline:
-
-```text
-memberships
--> stream()
--> groupingBy(kind)
--> summingInt(visits)
--> map
-```
-
-Implementation uses:
-
-```java
-Collectors.groupingBy(
-    Membership::getKind,
-    () -> new EnumMap<>(MembershipKind.class),
-    Collectors.summingInt(Membership::getVisits)
-)
-```
-
-Result type:
-
-```text
-Map<MembershipKind, Integer>
-```
-
-Actual result:
-
-```text
-MONTHLY = 47
-ANNUAL = 134
-```
-
-An `EnumMap` is used because `MembershipKind` is an enum and the keys have a fixed domain.
-
-### Query 4 — Visit Statistics
-
-Method:
-
-```java
-visitStatistics(...)
-```
-
-Implementation:
-
-```java
-return memberships.stream()
-    .collect(Collectors.summarizingInt(
-        Membership::getVisits
-    ));
-```
-
-Result type:
-
-```text
-IntSummaryStatistics
-```
-
-Actual statistics for the six-record test collection:
-
-```text
-count = 6
-sum = 181
-min = 0
-max = 110
-average = 30.1667
-```
-
-### Query 5 — Top-N Memberships
-
-Method:
-
-```java
-topMemberships(...)
-```
-
-The main criterion is the number of visits in descending order.
-
-The second criterion is the client name in ascending order.
-
-Comparator:
-
-```java
-Comparator.comparingInt(Membership::getVisits)
-    .reversed()
-    .thenComparing(Membership::getClient);
-```
-
-Pipeline:
-
-```text
-memberships
--> stream()
--> sorted(comparator)
--> limit(N)
--> toList()
-```
-
-For `N = 5`, the actual order is:
-
-```text
-1. Maria — 110 visits
-2. Anna — 24 visits
-3. Ivan — 24 visits
-4. Ivan — 15 visits
-5. Oleh — 8 visits
-```
-
-The sixth record:
-
-```text
-Taras — 0 visits
-```
-
-is removed by `limit(5)`.
-
-The two records with 24 visits verify the second comparator criterion:
-
-```text
-Anna
-Ivan
-```
-
-because client names are sorted in ascending order when visit counts are equal.
-
-Rules for N:
-
-```text
-N < 0   -> IllegalArgumentException
-N = 0   -> empty result
-N > size -> all available elements
-```
-
-## 6. Grouping and Statistics
-
-Grouping uses:
-
-```java
-MembershipKind
-```
-
-as the key.
-
-The downstream collector:
-
-```java
-Collectors.summingInt(Membership::getVisits)
-```
-
-calculates the total number of visits for every membership kind.
-
-Actual grouped result:
-
-| Membership Kind | Total Visits |
-|---|---:|
-| MONTHLY | 47 |
-| ANNUAL | 134 |
-
-Visit statistics are calculated using:
-
-```java
-Collectors.summarizingInt(Membership::getVisits)
-```
-
-The result provides count, sum, minimum, maximum and average in one object.
-
-For an empty collection:
-
-```text
-count = 0
-sum = 0
-```
-
-The empty case is tested explicitly.
-
-Numbers printed by the application continue to use:
-
-```java
-Locale.ROOT
-```
-
-to provide stable formatting independently of the operating system locale.
-
-## 7. Compound Comparator
-
-The comparator used by the top-N query is:
-
-```java
-Comparator<Membership> comparator =
-    Comparator.comparingInt(Membership::getVisits)
-        .reversed()
-        .thenComparing(Membership::getClient);
-```
-
-The first criterion is:
-
-```text
-visits — descending
-```
-
-The second criterion is:
-
-```text
-client — ascending
-```
-
-`reversed()` is applied only to the visits comparator before `thenComparing`.
-
-This preserves the required rule:
-
-```text
-visits descending,
-client ascending
-```
-
-After sorting, the query executes:
-
-```java
-.limit(n)
-```
-
-Therefore, the collection is sorted before truncation.
-
-This ensures that top-N means the N best elements of the complete input collection.
-
-## 8. Optional Search
-
-The search method is:
-
-```java
-findByClient(...)
-```
-
-Search key:
-
-```text
-client
-```
-
-Implementation:
-
-```java
-return memberships.stream()
-    .filter(membership ->
-        membership.getClient().equals(client))
-    .findFirst();
-```
-
-Result type:
-
-```text
-Optional<Membership>
-```
-
-### Existing Result
-
-The dataset contains two records with client:
-
-```text
-Ivan
-```
-
-`findFirst()` returns the first one in encounter order.
-
-Actual first result:
-
-```text
-client = Ivan
-plan = Standard
-visits = 24
-```
-
-### Missing Result
-
-Searching for:
-
-```text
-Unknown
+public List<T> all()
 ```
 
 returns:
 
-```text
-Optional.empty()
+```java
+List.copyOf(items)
 ```
 
-The method never returns `null`.
+Therefore, the caller receives an immutable snapshot rather than access to the internal mutable collection.
 
-## 9. Equivalence: Loop → Stream API → Result
+A snapshot created before another call to `add()` also remains unchanged.
 
-| Previous implementation | Stream API implementation | Result |
-|---|---|---|
-| manual visit accumulation and division | `visitStatistics().getAverage()` | `47.33` |
-| `totalRevenue += price` | `mapToDouble(Membership::getPrice).sum()` | `8700.00` |
-| `Math.max(maxMonths, months)` | `mapToInt(Membership::getMonths).max()` | `12` |
-| loop over `costPerVisit()` | `mapToDouble(...).anyMatch(...)` | no invalid values |
-| manual conditional selection | `filter(...)` | 5 active records in query dataset |
-| manual extraction | `map(...)` | client-name list |
-| manually updated map | `groupingBy(..., summingInt(...))` | MONTHLY 47, ANNUAL 134 |
-| manual statistical variables | `summarizingInt(...)` | count 6, sum 181, min 0, max 110 |
-| manual sorting/selection | `sorted(...).limit(5)` | correct top-5 |
-
-### LAB_03 Output
-
-```text
-Line 4 skipped: invalid numeric value
-Line 5 skipped: invalid number format
-Valid records: 3
-Average visits: 47.33
-Total revenue: 8700.00
-Longest membership: 12 months
-```
-
-### LAB_04 Output
-
-```text
-Line 4 skipped: invalid numeric value
-Line 5 skipped: invalid number format
-Valid records: 3
-Average visits: 47.33
-Total revenue: 8700.00
-Longest membership: 12 months
-```
-
-The external results are identical.
-
-Therefore, changing the implementation from manual accumulation to Stream API did not change the observable behavior of the application.
-
-## 10. Testing
-
-The previous tests from LAB_01, LAB_02 and LAB_03 remain in the project.
-
-A new test class was added:
-
-```text
-MembershipQueriesTest.java
-```
-
-The new tests cover:
-
-- filter query;
-- filter boundary with zero visits;
-- map query;
-- grouping result;
-- summary statistics;
-- top-5;
-- comparator tie-breaking;
-- `N = 0`;
-- N greater than collection size;
-- negative N;
-- duplicated client key;
-- Optional existing result;
-- Optional missing result;
-- empty collection;
-- absence of input collection mutation.
-
-### Six-Record Dataset
-
-The Stream tests contain six records:
-
-```text
-Ivan  — 24 visits
-Maria — 110 visits
-Oleh  — 8 visits
-Anna  — 24 visits
-Taras — 0 visits
-Ivan  — 15 visits
-```
-
-This dataset verifies:
-
-- a duplicated search key (`Ivan`);
-- filter boundary (`Taras`, 0 visits);
-- comparator tie (`Anna` and `Ivan`, both 24);
-- top-5 truncation;
-- different membership kinds.
-
-### Local Commands
-
-```powershell
-.\mvnw.cmd test
-.\mvnw.cmd verify
-```
-
-Result:
-
-```text
-BUILD SUCCESS
-```
-
-SpotBugs also completes successfully.
-
-### Input Immutability
-
-A dedicated test creates a copy of the original collection, executes all queries and then checks:
+### find
 
 ```java
-assertEquals(original, source);
+public List<T> find(
+    Predicate<? super T> condition
+)
 ```
 
-Therefore, the Stream API queries do not mutate the source collection.
+uses the predicate to select matching records:
 
-## 11. Infrastructure
+```java
+return items.stream()
+    .filter(condition)
+    .toList();
+```
 
-The existing infrastructure remains:
+`Predicate<? super T>` allows a predicate that accepts `T` or one of its supertypes.
 
-- Java 21;
-- Maven;
-- Maven Wrapper;
-- JUnit 5;
-- SpotBugs;
-- Maven Shade Plugin;
-- GitHub Actions.
+Raw types are not used.
 
-Project version:
+## 5. Data Model
+
+LAB_05 introduces the flat persistence class:
+
+```java
+MembershipRecord
+```
+
+Fields:
+
+| Field | Type | Meaning |
+|---|---|---|
+| `customer` | `String` | customer name |
+| `kind` | `MembershipKind` | membership type |
+| `startDate` | `LocalDate` | membership start |
+| `endDate` | `LocalDate` | membership end |
+| `visits` | `int` | visit count |
+
+### Invariants
+
+The implemented validation rules are:
 
 ```text
-1.3.0
+customer != null and not blank
+kind != null
+startDate != null
+endDate != null
+endDate >= startDate
+visits >= 0
 ```
 
-Commands:
+An invalid model value results in:
+
+```java
+IllegalArgumentException
+```
+
+or a null validation exception before the object is created.
+
+### Equality
+
+`equals()` compares:
+
+```text
+customer
+kind
+startDate
+endDate
+visits
+```
+
+`hashCode()` uses the same fields.
+
+This is necessary because the round-trip test compares the complete original and restored object lists:
+
+```java
+assertEquals(original, restored);
+```
+
+## 6. @CsvColumn
+
+LAB_05 defines:
+
+```java
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.FIELD)
+public @interface CsvColumn {
+    String value();
+}
+```
+
+`RetentionPolicy.RUNTIME` is necessary because `CsvExporter` reads the annotation using reflection while the program is running.
+
+`ElementType.FIELD` restricts its use to fields.
+
+`MembershipRecord` contains:
+
+```java
+@CsvColumn("клієнт")
+private final String customer;
+
+@CsvColumn("тип")
+private final MembershipKind kind;
+
+@CsvColumn("початок")
+private final LocalDate startDate;
+
+@CsvColumn("кінець")
+private final LocalDate endDate;
+
+@CsvColumn("відвідування")
+private final int visits;
+```
+
+The annotation value defines the text written to the CSV header.
+
+### Deterministic Order
+
+The exporter sorts fields by their Java names.
+
+For `MembershipRecord`, the resulting order is:
+
+```text
+customer
+endDate
+kind
+startDate
+visits
+```
+
+Therefore, the actual CSV header is:
+
+```text
+клієнт,кінець,тип,початок,відвідування
+```
+
+## 7. Reflection-Based Exporter
+
+The exporter is implemented in:
+
+```text
+CsvExporter
+```
+
+Its public method is generic:
+
+```java
+public static <T> void write(
+    Path path,
+    Class<T> type,
+    List<? extends T> records
+)
+```
+
+The exporter does not contain conditions such as:
+
+```java
+if (type == MembershipRecord.class)
+```
+
+and does not depend on:
+
+```text
+MonthlyMembership
+AnnualMembership
+MembershipRecord
+```
+
+### Reflection Algorithm
+
+The exporter:
+
+1. receives the class through `Class<T>`;
+2. obtains declared fields;
+3. selects fields containing `@CsvColumn`;
+4. sorts them by Java field name;
+5. verifies reflective access;
+6. obtains CSV header names from the annotations;
+7. obtains each field value using `Field.get`;
+8. escapes CSV-special characters;
+9. creates the CSV document;
+10. writes it using UTF-8.
+
+Reflection therefore allows the exporter to operate on another flat class containing annotated fields without changing the exporter implementation.
+
+### Field Access
+
+The implementation calls:
+
+```java
+field.trySetAccessible()
+```
+
+If access cannot be provided, export does not silently continue.
+
+Instead:
+
+```java
+DataStorageException
+```
+
+is thrown.
+
+## 8. CSV Format
+
+The file uses:
+
+```text
+UTF-8
+```
+
+through:
+
+```java
+StandardCharsets.UTF_8
+```
+
+### Actual Header
+
+```text
+клієнт,кінець,тип,початок,відвідування
+```
+
+### Normal Record Example
+
+```text
+Ivan Petrenko,2026-10-31,MONTHLY,2026-10-01,12
+```
+
+### Escaped Record
+
+One test record intentionally contains:
+
+```text
+Taras, "Strong"
+Client
+```
+
+The exported CSV representation is:
+
+```text
+"Taras, ""Strong""
+Client",2026-11-05,MONTHLY,2026-10-05,15
+```
+
+The comma is protected by the outer quotes.
+
+The original double quotes are doubled:
+
+```text
+"
+```
+
+becomes:
+
+```text
+""
+```
+
+The line break remains inside the quoted field and therefore remains part of the customer value.
+
+### Complete Demonstration CSV
+
+The produced file logically contains:
+
+```text
+клієнт,кінець,тип,початок,відвідування
+Ivan Petrenko,2026-10-31,MONTHLY,2026-10-01,12
+Maria Koval,2026-12-31,ANNUAL,2026-01-01,105
+Oleh Bondar,2026-09-30,MONTHLY,2026-09-01,8
+Anna Melnyk,2027-01-31,ANNUAL,2026-02-01,80
+"Taras, ""Strong""
+Client",2026-11-05,MONTHLY,2026-10-05,15
+```
+
+There are five data records, but the multiline record occupies two physical text lines.
+
+Therefore:
+
+```text
+logical data records = 5
+physical CSV lines = 7
+```
+
+including the header.
+
+## 9. Import and Round-Trip
+
+Round-trip is the sequence:
+
+```text
+object
+→ CSV
+→ parser
+→ object
+```
+
+The exporter is generic, but conversion from text to:
+
+```text
+LocalDate
+MembershipKind
+int
+```
+
+is domain-specific.
+
+For this reason `MembershipRecord` implements:
+
+```java
+fromCsvFields(...)
+```
+
+### Import Field Order
+
+Because the exporter uses alphabetical Java field order, the parser restores:
+
+```text
+0 -> customer
+1 -> endDate
+2 -> kind
+3 -> startDate
+4 -> visits
+```
+
+Conversions:
+
+```java
+LocalDate.parse(...)
+MembershipKind.valueOf(...)
+Integer.parseInt(...)
+```
+
+### Reading the File
+
+`MembershipCsvReader` uses:
+
+```java
+Files.readString(
+    path,
+    StandardCharsets.UTF_8
+)
+```
+
+The complete document is then passed to:
+
+```java
+CsvParser.parseDocument(text)
+```
+
+This is important because a physical line break may appear inside a quoted CSV field.
+
+### Actual Round-Trip Result
+
+The command:
+
+```powershell
+java -jar target\lab01-1.4.0.jar --csv-demo
+```
+
+produced:
+
+```text
+CSV file: out\memberships.csv
+Original records: 5
+Restored records: 5
+Round-trip equal: true
+```
+
+Therefore:
+
+```text
+original.size() = 5
+restored.size() = 5
+original.equals(restored) = true
+```
+
+The values of the records, including the enum, dates, visit count and escaped customer string, survived the complete round-trip.
+
+The variant round-trip key is:
+
+```text
+customer + startDate
+```
+
+## 10. Error Handling
+
+LAB_05 distinguishes model, CSV format, CSV value, filesystem and reflection errors.
+
+| Error type | Example | Result | Cause |
+|---|---|---|---|
+| Model validation | negative visits | `IllegalArgumentException` | model error itself |
+| Field count | fewer than 5 fields | `DataStorageException` | none required |
+| Number conversion | `visits = abc` | `DataStorageException` | `NumberFormatException` |
+| Enum conversion | `kind = UNKNOWN` | `DataStorageException` | `IllegalArgumentException` |
+| CSV syntax | unclosed quotes | `DataStorageException` | parser error |
+| CSV header | unexpected header | `DataStorageException` | none required |
+| File read | missing file | `DataStorageException` | `IOException` |
+| File write | filesystem error | `DataStorageException` | `IOException` |
+| Reflection | inaccessible field | `DataStorageException` | reflective/runtime cause where available |
+| No annotated fields | exporting unsupported class | `DataStorageException` | none required |
+
+Example conversion handling:
+
+```java
+try {
+    int visits =
+        Integer.parseInt(fields.get(4));
+} catch (IllegalArgumentException exception) {
+    throw new DataStorageException(
+        "Invalid membership CSV values",
+        exception
+    );
+}
+```
+
+The original cause remains available through:
+
+```java
+exception.getCause()
+```
+
+Errors are not replaced by an empty collection.
+
+## 11. Testing
+
+All tests from the previous laboratory works remain in the project.
+
+LAB_05 adds tests for:
+
+```text
+Repository<T>
+MembershipRecord
+CsvExporter
+CsvParser
+Membership round-trip
+```
+
+### Repository Tests
+
+Checked:
+
+- adding values;
+- retrieving stored records;
+- immutable `all()` result;
+- snapshot independence;
+- predicate search;
+- null item rejection;
+- null predicate rejection.
+
+### Annotation and Model Tests
+
+Checked:
+
+- valid `MembershipRecord`;
+- field values;
+- equality;
+- hash code;
+- negative visits;
+- invalid date interval;
+- presence of `@CsvColumn`;
+- correct annotation values.
+
+### Export Tests
+
+Checked:
+
+- deterministic header;
+- normal record;
+- comma escaping;
+- quote escaping;
+- multiline field;
+- empty record list;
+- class without CSV columns;
+- UTF-8 output.
+
+### Parser Tests
+
+Checked:
+
+- normal CSV;
+- quoted comma;
+- doubled quote;
+- multiline quoted field;
+- CRLF;
+- empty CSV;
+- unclosed quote;
+- invalid characters after a closing quote;
+- multiple records passed to the single-record method.
+
+### Round-Trip Tests
+
+Checked:
+
+```text
+5 original records
+5 restored records
+equal lists
+```
+
+The test data include:
+
+```text
+comma
+quotes
+line break
+MONTHLY enum
+ANNUAL enum
+LocalDate values
+integer visits
+```
+
+### Negative Tests
+
+Checked:
+
+```text
+invalid field count
+invalid number
+invalid enum
+missing file
+```
+
+`getCause()` is explicitly verified for conversion and filesystem failures.
+
+### Empty Input
+
+Two empty states are tested.
+
+An exporter called with:
+
+```java
+List.of()
+```
+
+still creates a header because `MembershipRecord.class` is supplied separately.
+
+An entirely empty CSV document returns:
+
+```text
+empty list
+```
+
+### Local Verification
+
+The following commands were executed successfully:
 
 ```powershell
 .\mvnw.cmd test
@@ -695,317 +737,455 @@ Commands:
 .\mvnw.cmd package
 ```
 
+The executable JAR also ran successfully.
+
+## 12. Infrastructure
+
+The project uses:
+
+```text
+Java 21
+Maven
+Maven Wrapper
+JUnit 5
+SpotBugs
+Maven Shade Plugin
+GitHub Actions
+```
+
+Current version:
+
+```text
+1.4.0
+```
+
+### Test
+
+```powershell
+.\mvnw.cmd test
+```
+
+### Static Analysis
+
+```powershell
+.\mvnw.cmd verify
+```
+
+This executes the tests and SpotBugs verification.
+
+### Package
+
+```powershell
+.\mvnw.cmd package
+```
+
 Executable JAR:
 
-```powershell
-java -jar target\lab01-1.3.0.jar
+```text
+target/lab01-1.4.0.jar
 ```
 
-Version check:
+### Normal Application
 
 ```powershell
-java -jar target\lab01-1.3.0.jar --version
+java -jar target\lab01-1.4.0.jar
 ```
 
-Result:
+### Version
+
+```powershell
+java -jar target\lab01-1.4.0.jar --version
+```
+
+Actual result:
 
 ```text
-lab01 1.3.0
+lab01 1.4.0
 ```
 
-GitHub Actions is configured to execute verification on:
+### CSV Demonstration
+
+```powershell
+java -jar target\lab01-1.4.0.jar --csv-demo
+```
+
+Actual result:
 
 ```text
-Ubuntu
-Windows
-macOS
+CSV file: out\memberships.csv
+Original records: 5
+Restored records: 5
+Round-trip equal: true
+```
+
+### Continuous Integration
+
+GitHub Actions is configured for:
+
+```text
+ubuntu-latest
+windows-latest
+macos-latest
 ```
 
 The workflow uploads:
 
 ```text
-target/lab01-1.3.0.jar
+target/lab01-1.4.0.jar
 ```
 
-as a `lab04` artifact.
-
-**Final CI:** to be added after the LAB_04 Pull Request finishes successfully.  
-**JAR artifact:** available from the final LAB_04 Actions run.  
-**Git tag:** v1.3.0 after the final Pull Request is merged.
-
-## 12. GitHub Issues and Pull Request
-
-LAB_04 was developed in the branch:
+using an artifact name beginning with:
 
 ```text
-LAB_04
+lab05-
 ```
 
-The following Issues were used:
+The final remote CI result will be recorded after the LAB_05 Pull Request is created and all three matrix jobs finish.
+
+**Git tag:** `v1.4.0` will be created on `main` after the final Pull Request is merged.
+
+## 13. GitHub Issues and Pull Request
+
+LAB_05 was implemented in:
+
+```text
+LAB_05
+```
+
+The following Issues were created:
 
 | Issue | Change | Verification |
 |---|---|---|
-| #33 | Implement LAB_04 active membership filter | filter tests and boundary case |
-| #34 | Implement LAB_04 client mapping | map result test |
-| #35 | Implement LAB_04 visits grouping | grouping result test |
-| #36 | Implement LAB_04 visit statistics | summary-statistics test |
-| #37 | Implement LAB_04 top memberships query | top-N and comparator tests |
-| #38 | Implement LAB_04 Optional search | existing and missing search tests |
-| #39 | Add LAB_04 stream query tests | Maven test and verify |
-| #40 | Update LAB_04 documentation | README, REPORT and Javadoc |
-| #41 | Verify LAB_04 CI and release | verify, JAR, CI, version and tag |
-
-Duplicate Issues #42–#50 were accidentally created during command-line Issue creation and were closed as duplicates of #33–#41.
+| #52 | Implement LAB_05 generic repository | `RepositoryTest` |
+| #53 | Implement LAB_05 CSV annotation | reflection/annotation tests |
+| #54 | Implement LAB_05 CSV exporter | header and escaping tests |
+| #55 | Implement LAB_05 CSV parser | parser and multiline tests |
+| #56 | Implement LAB_05 storage exceptions | cause/error tests |
+| #57 | Implement LAB_05 MembershipRecord round-trip | round-trip test |
+| #58 | Add LAB_05 tests | `test` and `verify` |
+| #59 | Update LAB_05 documentation | README and REPORT |
+| #60 | Verify LAB_05 CI and release | JAR, CI, version and tag |
 
 The final Pull Request will merge:
 
 ```text
-LAB_04 -> main
+LAB_05 -> main
 ```
 
-The Pull Request will contain:
+and will contain:
 
 ```text
-Closes #33
-Closes #34
-Closes #35
-Closes #36
-Closes #37
-Closes #38
-Closes #39
-Closes #40
-Closes #41
+Closes #52
+Closes #53
+Closes #54
+Closes #55
+Closes #56
+Closes #57
+Closes #58
+Closes #59
+Closes #60
 ```
 
-## 13. Comparison of Implementations
+The Pull Request will also include:
 
-### Loop-Based Implementation
+- CSV example;
+- local verification result;
+- round-trip result;
+- error handling summary;
+- CI result.
 
-The previous implementation explicitly described every processing step:
+## 14. Comparison with the Previous State
+
+LAB_05 does not replace the existing subject domain.
+
+The previous membership hierarchy remains available:
 
 ```text
-create accumulator
-iterate
-check condition
-update accumulator
-continue
+Membership
+├── MonthlyMembership
+└── AnnualMembership
 ```
 
-This style is straightforward for simple algorithms but combines traversal and calculation in one block.
+The Stream API query layer from LAB_04 also remains.
 
-### Stream-Based Implementation
+The primary storage change in `Main` is:
 
-The Stream API version describes the requested result:
-
-```text
-source
--> filter/map
--> grouping/statistics/sorting
--> result
-```
-
-For example:
+### Before
 
 ```java
-memberships.stream()
-    .mapToDouble(Membership::getPrice)
-    .sum();
+List<Membership> memberships =
+    new ArrayList<>();
 ```
 
-directly describes the operation “sum all membership prices”.
-
-Similarly:
+### After
 
 ```java
-memberships.stream()
-    .sorted(comparator)
-    .limit(n)
-    .toList();
+Repository<Membership> repository =
+    new Repository<>();
 ```
 
-directly describes the top-N operation.
+and after parsing:
 
-### Readability
+```java
+List<Membership> memberships =
+    repository.all();
+```
 
-Stream API improved readability for:
+The external output before LAB_05 was:
 
-- filtering;
-- transformation;
-- grouping;
-- aggregation;
-- sorting;
-- Optional search.
+```text
+Line 4 skipped: invalid numeric value
+Line 5 skipped: invalid number format
+Valid records: 3
+Average visits: 47.33
+Total revenue: 8700.00
+Longest membership: 12 months
+```
 
-However, readability should not be evaluated only by counting lines of code.
+After introducing `Repository<T>` and CSV functionality, the result remains:
 
-A shorter stream pipeline can still be difficult to understand if:
+```text
+Line 4 skipped: invalid numeric value
+Line 5 skipped: invalid number format
+Valid records: 3
+Average visits: 47.33
+Total revenue: 8700.00
+Longest membership: 12 months
+```
 
-- too many unrelated operations are placed in one chain;
-- ordering is incorrect;
-- side effects are introduced;
-- comparator rules are unclear.
+Therefore, LAB_05 added persistence without losing the previous calculations, model or external behavior.
 
-For this reason, the LAB_04 queries are implemented as separate named methods.
+## 15. Academic Integrity
 
-## 14. Academic Integrity
+ChatGPT was used as a generative AI assistant during LAB_05.
 
-ChatGPT was used as a generative AI assistant during LAB_04.
+### Tool
 
-### AI Roles
+```text
+ChatGPT
+```
 
-The assistant was used as:
+### Roles
+
+The AI assistant was used as:
 
 - requirements consultant;
-- development assistant;
+- component design assistant;
 - test-case reviewer;
-- validator of boundary cases;
+- CSV validation assistant;
 - DevOps assistant;
 - documentation assistant;
 - Git/GitHub workflow assistant.
 
 ### Example Requests
 
-The requests included:
-
-- analysis of LAB_04 requirements;
-- identification of the requirements for variant 20;
-- design of Stream API methods;
-- preparation of query tests;
-- verification of top-N boundary conditions;
-- comparison of loop and Stream API implementations;
-- Maven and JAR verification guidance;
-- README and REPORT preparation.
-
-### Accepted Recommendations
-
-The following recommendations were accepted:
-
-- creating `MembershipQueries`;
-- keeping every query in a separate named method;
-- using `filter` for active memberships;
-- using `map` for client names;
-- using `groupingBy` with `summingInt`;
-- using `summarizingInt`;
-- using `reversed().thenComparing(...)`;
-- using `Optional` and `findFirst`;
-- testing negative, zero and oversized N;
-- testing an empty collection;
-- testing a duplicated client;
-- checking that the input collection is not modified.
-
-### Rejected or Adapted Recommendations
-
-The LAB_04 variant description contains start and end date fields for gym memberships.
-
-Changing the existing LAB_03 model to these fields was rejected because the laboratory methodology also requires preserving the previous domain model and input format.
-
-Instead, the existing model was retained and the active-membership rule was adapted to:
+Examples of requests made to the assistant:
 
 ```text
-visits > 0
+Analyse LAB_05 for variant 20.
+Create Repository<T>.
+Implement @CsvColumn.
+Implement a reflection-based CsvExporter.
+Add proper CSV escaping.
+Implement a CSV parser without split(",").
+Create MembershipRecord for variant 20.
+Implement object -> CSV -> object round-trip.
+Add tests for invalid numbers, enum and file errors.
+Prepare README and REPORT.
 ```
 
-This adaptation is explicitly documented in the report and tested.
+### Accepted Suggestions
 
-The application report was also not expanded with the five query results because this would unnecessarily change the external behavior preserved from previous laboratory works. Query results are verified by tests and documented separately.
+Accepted suggestions included:
 
-### Corrected Issues
+- using a generic `Repository<T>`;
+- returning `List.copyOf()` from `all()`;
+- using `Predicate<? super T>`;
+- implementing a checked `DataStorageException`;
+- preserving the original exception as `cause`;
+- using `@Retention(RUNTIME)`;
+- using `@Target(FIELD)`;
+- sorting reflected fields by Java field name;
+- using a domain-independent exporter;
+- quoting CSV fields containing commas, quotes or line breaks;
+- doubling embedded quotes;
+- parsing the complete CSV document;
+- keeping import conversion domain-specific;
+- testing round-trip equality.
 
-Duplicate GitHub Issues were accidentally created while testing command-line Issue creation.
+### Adapted Decisions
 
-The duplicate Issues #42–#50 were closed and the original #33–#41 remained as the LAB_04 work items.
+The existing LAB_03/LAB_04 polymorphic model uses:
+
+```text
+client
+plan
+months
+visits
+price
+```
+
+while LAB_05 variant 20 specifies:
+
+```text
+customer
+kind
+startDate
+endDate
+visits
+```
+
+The previous model was not removed or rewritten.
+
+Instead, a separate flat:
+
+```text
+MembershipRecord
+```
+
+was introduced for persistence.
+
+This preserves the previous product while also implementing the exact persistence fields required for LAB_05.
+
+### Corrected Problems
+
+During implementation, special attention was given to:
+
+- avoiding `split(",")`;
+- matching parser field order to reflection field order;
+- retaining exception causes;
+- preserving the original LAB_04 output;
+- keeping the CSV exporter independent of the gym domain.
 
 ### My Contribution
 
 My contribution included:
 
-- creating the `LAB_04` branch;
-- creating and managing GitHub Issues;
-- integrating the Stream API query class;
-- reviewing Stream pipelines;
-- running tests;
+- creating and maintaining the `LAB_05` branch;
+- creating Issues;
+- integrating each LAB_05 class into the project;
+- reviewing the code;
+- running all tests;
 - running SpotBugs;
-- executing the packaged JAR;
-- comparing old and new output;
-- updating the Maven version;
-- updating GitHub Actions;
-- reviewing and updating documentation;
-- committing and pushing the implementation.
+- testing the executable JAR;
+- running the CSV demonstration;
+- checking round-trip equality;
+- verifying the original application output;
+- updating version and CI configuration;
+- preparing and reviewing the documentation.
 
-All submitted code was reviewed and understood before inclusion in the project.
+I reviewed the submitted implementation and understand the purpose of the generic repository, annotation, reflection, CSV escaping, parser, checked exception and round-trip process.
 
-## 15. Control Questions
+## 16. Control Questions
 
-1. **How is a stream different from a collection?**  
-   A collection stores data, while a stream describes operations that process data from a source.
+### 1. What problem does the type parameter solve in Repository<T>?
 
-2. **What parts does a typical Stream API pipeline contain?**  
-   A source, zero or more intermediate operations and a terminal operation.
+It makes the repository type-safe. The compiler knows what type of objects the repository stores, so casts and raw `Object` values are not required.
 
-3. **Why are intermediate operations called lazy?**  
-   They do not process the elements until a terminal operation starts the pipeline.
+### 2. How is a parameterized class different from a raw type?
 
-4. **What does filter do and what type does its predicate have?**  
-   `filter` keeps elements for which a `Predicate<T>` returns `true`.
+A parameterized type such as:
 
-5. **How is map different from mapToDouble?**  
-   `map` returns an object stream, while `mapToDouble` produces a primitive `DoubleStream`.
+```java
+Repository<MembershipRecord>
+```
 
-6. **What is distinct used for and what determines its result?**  
-   It removes duplicate elements according to `equals()` and `hashCode()`.
+preserves compile-time type checking. A raw `Repository` loses part of this protection.
 
-7. **Why is sorted().limit(N) different from limit(N).sorted()?**  
-   The first sorts the complete stream and then selects N elements. The second selects N input elements first and only sorts that subset.
+### 3. Why does find use Predicate<? super T>?
 
-8. **What is the role of a terminal operation?**  
-   It starts stream processing and produces the final result or side effect.
+It allows the repository to accept a predicate for `T` or a compatible supertype of `T`, while still maintaining type safety.
 
-9. **When is Collectors.joining used?**  
-   It combines stream elements into one string with optional separators, prefix and suffix.
+### 4. Why should all() return an immutable snapshot?
 
-10. **How does groupingBy build groups?**  
-    It calculates a key for every element and places elements or aggregated values into groups associated with those keys.
+The caller should not be able to modify the repository's internal collection directly. A snapshot also preserves its state even if the repository changes later.
 
-11. **How can a sum be calculated inside each group?**  
-    By using a downstream collector such as `Collectors.summingInt` or `Collectors.summingDouble`.
+### 5. What is a checked exception and when is it appropriate here?
 
-12. **What values does DoubleSummaryStatistics contain?**  
-    Count, sum, minimum, maximum and average.
+A checked exception must be handled or declared by the caller. `DataStorageException` is suitable because export, import, filesystem and CSV processing are operations that can fail and the caller must decide how to handle the failure.
 
-13. **What happens to statistics for an empty stream?**  
-    Count and sum are zero. Minimum and maximum have special infinity values for `DoubleSummaryStatistics`, so empty input should be handled explicitly when those values are displayed.
+### 6. Why preserve the cause of a custom exception?
 
-14. **How is a compound comparator created?**  
-    A comparator is created for the main key and then extended with `thenComparing` for the secondary key.
+It keeps the original technical reason for the failure. For example, a high-level message can say that CSV reading failed while `getCause()` still contains the original `IOException`.
 
-15. **Why should reversed() be applied before thenComparing in this project?**  
-    Only the primary visits criterion must be descending. The client criterion must remain ascending.
+### 7. Why are Path and Files better than constructing paths as strings?
 
-16. **What problem does Optional solve in search methods?**  
-    It explicitly represents that a result may be absent instead of returning `null`.
+`Path` represents filesystem paths independently of the operating system, while `Files` provides standard operations for reading, writing and creating directories.
 
-17. **What is the difference between orElse, orElseThrow and ifPresent?**  
-    `orElse` returns a fallback value, `orElseThrow` throws an exception when empty, and `ifPresent` performs an action only when a value exists.
+### 8. Why must encoding be specified for both writing and reading?
 
-18. **Why is accumulating results in an external mutable list inside forEach undesirable?**  
-    It introduces side effects and makes the stream pipeline harder to reason about and safely parallelize.
+If different or platform-default encodings are used, characters can be corrupted. Using `StandardCharsets.UTF_8` on both sides makes the result deterministic.
 
-19. **What must be checked when refactoring a loop into a stream?**  
-    The resulting values, order where relevant, duplicates, empty input, boundary conditions, lack of input mutation and compatibility with previous tests.
+### 9. What do @Retention(RUNTIME) and @Target(FIELD) do?
 
-20. **When can a parallel stream be justified?**  
-    When the dataset is sufficiently large, operations are suitable for parallel execution, shared mutable state is avoided and measurements show an actual benefit.
+`RUNTIME` keeps the annotation available to reflection during execution. `FIELD` permits the annotation on fields.
 
-## 16. Conclusion
+### 10. Why does an annotation not perform export itself?
 
-LAB_04 replaced the main collection-processing calculations with declarative Stream API pipelines.
+An annotation stores metadata only. Another component, in this project `CsvExporter`, reads that metadata and implements the actual behavior.
 
-The project now contains separate methods for filtering, mapping, grouping, summary statistics, top-N processing and Optional search.
+### 11. How does getDeclaredFields() differ from obtaining only public fields?
 
-The compound comparator provides deterministic ordering, while Optional explicitly represents an absent search result.
+`getDeclaredFields()` returns fields declared directly by a class regardless of their access modifier. Public-field APIs do not provide the same access to private declared fields.
 
-Tests cover normal input, empty collections, duplicates, filter boundaries, comparator tie-breaking, top-N boundaries and source immutability.
+### 12. Why check trySetAccessible()?
 
-The previous polymorphic model, tests and external report remain compatible.
+The exporter must know whether it can actually read the private field. If access cannot be enabled, it should report an error rather than silently skip the value.
 
-The Stream API query layer created in LAB_04 provides a reusable foundation for subsequent laboratory works.
+### 13. Why must CSV field order be deterministic?
+
+Export and import must agree on the position of every value. Stable ordering also makes generated files reproducible on different runs and systems.
+
+### 14. Why is split(",") unsuitable for general CSV?
+
+A comma inside a quoted field is data rather than a separator. `split(",")` cannot distinguish between those cases.
+
+### 15. How are commas, quotes and line breaks escaped in CSV?
+
+If the field contains one of these characters, the complete field is enclosed in double quotes. A double quote inside the field is written twice.
+
+### 16. Why does an empty list require Class<T>?
+
+There is no first object from which the exporter could determine the class and its annotated fields. `Class<T>` allows the exporter to create the header even when there are zero records.
+
+### 17. How does the generic exporter differ from domain-specific fromCsv logic?
+
+The exporter only reads annotated fields through reflection and does not know their domain meaning. Import must know how to convert strings into types such as `LocalDate`, enum and `int`, so this part is domain-specific.
+
+### 18. What error levels does the program distinguish?
+
+The implementation distinguishes model validation, CSV syntax, CSV value conversion, filesystem errors and reflection errors.
+
+### 19. What does the round-trip test prove?
+
+It proves that an object can be exported to CSV and restored without changing the values used by `equals()`.
+
+### 20. Why should an exception not be swallowed by an empty catch block?
+
+The caller would lose information about the failure and could incorrectly treat an error as a successful empty result. Preserving or handling the exception keeps the program state understandable.
+
+## 17. Conclusion
+
+LAB_05 extended the existing gym application with a type-safe generic storage layer and CSV persistence.
+
+`Repository<T>` separates collection storage from application logic.
+
+`@CsvColumn` stores CSV metadata directly on the persistence model.
+
+Reflection allows `CsvExporter` to operate without knowing the specific gym class in advance.
+
+The CSV implementation correctly supports commas, quotes and multiline fields, and UTF-8 is explicitly used for both writing and reading.
+
+`DataStorageException` adds application-level context while preserving the original cause.
+
+The completed round-trip produced:
+
+```text
+Original records: 5
+Restored records: 5
+Round-trip equal: true
+```
+
+All previous report values were also preserved.
+
+The generated CSV can now be used as the input text format for the next software block of the project.
