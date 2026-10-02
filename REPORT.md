@@ -1,65 +1,42 @@
-# Laboratory Work No. 3 Report
+# Laboratory Work No. 4 Report
 
-## 1. Topic and Variant
+## 1. Topic, Number and Variant
 
-**Topic:** Inheritance, Interfaces and Polymorphism in a Java Project  
-**Laboratory Work:** No. 3  
+**Topic:** Stream Data Processing in a Java Project  
+**Laboratory Work:** No. 4  
 **Variant:** 20 — Gym  
+**Domain:** Gym Membership Management  
 **Operating System:** Windows 11
 
 **Repository:**  
 https://github.com/OneeTwo/kzp-rybachuk
 
-**Version:** 1.2.0  
-**Git tag:** v1.2.0
+**Version:** 1.3.0  
+**Git tag:** v1.3.0 — to be created after the final Pull Request is merged.
 
 ## 2. Objective
 
-The objective of this laboratory work was to extend the domain model created in LAB_02 using inheritance and polymorphism.
+The objective of LAB_04 was to replace the main manual collection-processing calculations from the previous project state with declarative Java Stream API pipelines while preserving the external behavior of the application.
 
-The new implementation introduces:
+The implementation now provides:
 
-- an abstract `Membership` base class;
-- `MonthlyMembership` and `AnnualMembership` subclasses;
-- the `MembershipKind` enum;
-- a polymorphic `costPerVisit()` method;
-- consistent `equals()` and `hashCode()`;
-- equality verification using `HashSet`;
-- new JUnit tests for the hierarchy and polymorphic behavior.
+- filtering through `filter`;
+- transformation through `map`;
+- grouping through `Collectors.groupingBy`;
+- summary statistics through `Collectors.summarizingInt`;
+- top-N processing through `sorted` and `limit`;
+- a compound comparator using `reversed` and `thenComparing`;
+- search through `Optional`;
+- Stream API calculations in the main report;
+- tests for normal, boundary and empty cases.
 
-The external report and the original statistics remain unchanged.
+The previous polymorphic model, CSV input format and report output remain compatible with LAB_03.
 
-## 3. State Before and After LAB_03
+## 3. State Before and After LAB_04
 
-### Before LAB_03
+### Before LAB_04
 
-LAB_02 contained one concrete domain entity:
-
-```text
-Membership
-```
-
-It stored:
-
-```text
-client
-plan
-months
-visits
-price
-```
-
-CSV records were converted using:
-
-```java
-Membership.fromCsv(line)
-```
-
-### After LAB_03
-
-`Membership` became an abstract base class.
-
-The hierarchy is:
+LAB_03 already contained the polymorphic hierarchy:
 
 ```text
 Membership
@@ -67,34 +44,97 @@ Membership
 └── AnnualMembership
 ```
 
-Common fields and validation remain in `Membership`.
+Statistics in `Main.java` were calculated by manually iterating through the collection.
 
-Different membership behavior is implemented in subclasses through:
+For example, the previous implementation accumulated:
 
-```java
-costPerVisit()
+```text
+totalVisits
+totalRevenue
+maxMonths
 ```
 
-## 4. Base Type
+inside a `for` loop.
 
-The common base type is:
+### After LAB_04
 
-```java
-public abstract class Membership
-```
+Collection calculations are expressed with Stream API operations.
 
-It contains:
+Examples:
 
 ```java
-private final String client;
-private final String plan;
-private final int months;
-private final int visits;
-private final double price;
-private final MembershipKind kind;
+memberships.stream()
+    .mapToDouble(Membership::getPrice)
+    .sum();
 ```
 
-The common validation rules are:
+and:
+
+```java
+memberships.stream()
+    .mapToInt(Membership::getMonths)
+    .max()
+    .orElse(0);
+```
+
+A new class:
+
+```text
+MembershipQueries
+```
+
+contains separate named methods for the five required queries and Optional search.
+
+The input parsing loop remains imperative because it performs sequential file-line parsing, validation and error reporting. The domain collection queries and report calculations are the parts refactored to Stream API.
+
+## 4. Data Contract
+
+The previous LAB_03 model is preserved.
+
+### Base Type
+
+```java
+Membership
+```
+
+is the abstract common type.
+
+### Subtypes
+
+```text
+MonthlyMembership
+AnnualMembership
+```
+
+### Enum
+
+```java
+MembershipKind
+```
+
+contains:
+
+```text
+MONTHLY
+ANNUAL
+```
+
+### Fields
+
+The existing membership model contains:
+
+```text
+client
+plan
+months
+visits
+price
+kind
+```
+
+### Validation Rules
+
+The main common rules are:
 
 - client must not be null or blank;
 - plan must not be null or blank;
@@ -103,178 +143,508 @@ The common validation rules are:
 - price must be finite and non-negative;
 - membership kind must not be null.
 
-The base class declares:
-
-```java
-public abstract double costPerVisit();
-```
-
-The class is abstract because a generic membership does not define one specific cost-per-visit algorithm.
-
-## 5. Subtypes
-
-### MonthlyMembership
-
-`MonthlyMembership` represents memberships shorter than 12 months.
-
-Rule:
+`MonthlyMembership` requires:
 
 ```text
 months < 12
 ```
 
-Its polymorphic method calculates:
-
-```text
-price / visits
-```
-
-If visits are zero, the method returns `0.0`.
-
-### AnnualMembership
-
-`AnnualMembership` represents memberships of 12 months or more.
-
-Rule:
+`AnnualMembership` requires:
 
 ```text
 months >= 12
 ```
 
-Its cost-per-visit calculation uses a 10% annual benefit:
+### Input Format
+
+The existing CSV contract remains unchanged:
 
 ```text
-price * 0.90 / visits
+client;plan;months;visits;price
 ```
 
-If visits are zero, the method returns `0.0`.
+The LAB_04 variant table describes active memberships using start and end dates, but changing the model to those fields would break the data contract inherited from previous laboratories.
 
-The different formulas demonstrate different subtype behavior.
+Therefore, the previous model is preserved.
 
-They do not modify the original revenue statistics.
+For this project, an active membership is defined as a membership with at least one recorded visit:
 
-## 6. MembershipKind Enum
-
-The project contains:
-
-```java
-public enum MembershipKind {
-    MONTHLY("Monthly"),
-    ANNUAL("Annual")
-}
+```text
+visits > 0
 ```
 
-The enum represents a fixed set of membership categories.
+This rule is used consistently in implementation and tests.
 
-The base class stores a `MembershipKind` value and provides access through:
+## 5. Five Stream API Queries
 
-```java
-getKind()
+All queries are located in:
+
+```text
+MembershipQueries.java
 ```
 
-## 7. equals and hashCode
+### Query 1 — Filter Active Memberships
 
-`Membership` implements consistent `equals()` and `hashCode()` methods.
-
-Logical equality includes:
-
-- concrete subtype;
-- client;
-- plan;
-- months;
-- visits;
-- price.
-
-The concrete class is included in equality using:
+Method:
 
 ```java
-getClass()
+activeMemberships(...)
 ```
 
-Therefore, objects of different membership subtypes are not considered equal.
+Source:
 
-Correct behavior is verified using `HashSet`.
-
-When two logically equal memberships are inserted, only one unique element remains.
-
-## 8. Polymorphism
-
-Objects are stored in:
-
-```java
+```text
 List<Membership>
 ```
 
-The processing code calls:
+Pipeline:
+
+```text
+memberships
+-> stream()
+-> filter(visits > 0)
+-> toList()
+```
+
+Implementation:
 
 ```java
-double costPerVisit = membership.costPerVisit();
+return memberships.stream()
+    .filter(membership -> membership.getVisits() > 0)
+    .toList();
 ```
 
-The variable has type `Membership`, but Java calls the implementation belonging to the actual object.
-
-For example:
+Result type:
 
 ```text
-MonthlyMembership.costPerVisit()
+List<Membership>
 ```
 
-or:
+For the six-record test dataset, five memberships are active.
 
-```text
-AnnualMembership.costPerVisit()
-```
+### Query 2 — Map Client Names
 
-The program does not use:
+Method:
 
 ```java
-if (membership instanceof MonthlyMembership)
+clientNames(...)
 ```
 
-to select behavior.
-
-This demonstrates runtime polymorphism.
-
-### Inheritance or Composition
-
-Inheritance was selected because `MonthlyMembership` and `AnnualMembership` are both types of `Membership`.
-
-They share common fields and validation but have different behavior.
-
-`VisitsPrice` remains a helper record and is used through composition rather than inheritance.
-
-## 9. Testing
-
-The previous tests were preserved and adapted because `Membership` became abstract.
-
-Test files:
+Pipeline:
 
 ```text
-MainTest.java
-MembershipTest.java
-MembershipHierarchyTest.java
+memberships
+-> stream()
+-> map(client)
+-> toList()
 ```
 
-The tests verify:
+Implementation:
 
-- valid common fields;
-- null and blank values;
-- invalid numeric values;
-- CSV parsing;
-- creation of monthly memberships;
-- creation of annual memberships;
-- `MembershipKind`;
-- monthly cost per visit;
-- annual cost per visit;
-- polymorphic behavior;
-- zero visits;
-- equality;
-- equal hash codes;
-- `HashSet` behavior;
-- inequality of different subtypes;
-- compatibility with previous statistics.
+```java
+return memberships.stream()
+    .map(Membership::getClient)
+    .toList();
+```
 
-Commands:
+Result type:
+
+```text
+List<String>
+```
+
+Actual result:
+
+```text
+[Ivan, Maria, Oleh, Anna, Taras, Ivan]
+```
+
+### Query 3 — Group Visits by Membership Kind
+
+Method:
+
+```java
+visitsByKind(...)
+```
+
+Pipeline:
+
+```text
+memberships
+-> stream()
+-> groupingBy(kind)
+-> summingInt(visits)
+-> map
+```
+
+Implementation uses:
+
+```java
+Collectors.groupingBy(
+    Membership::getKind,
+    () -> new EnumMap<>(MembershipKind.class),
+    Collectors.summingInt(Membership::getVisits)
+)
+```
+
+Result type:
+
+```text
+Map<MembershipKind, Integer>
+```
+
+Actual result:
+
+```text
+MONTHLY = 47
+ANNUAL = 134
+```
+
+An `EnumMap` is used because `MembershipKind` is an enum and the keys have a fixed domain.
+
+### Query 4 — Visit Statistics
+
+Method:
+
+```java
+visitStatistics(...)
+```
+
+Implementation:
+
+```java
+return memberships.stream()
+    .collect(Collectors.summarizingInt(
+        Membership::getVisits
+    ));
+```
+
+Result type:
+
+```text
+IntSummaryStatistics
+```
+
+Actual statistics for the six-record test collection:
+
+```text
+count = 6
+sum = 181
+min = 0
+max = 110
+average = 30.1667
+```
+
+### Query 5 — Top-N Memberships
+
+Method:
+
+```java
+topMemberships(...)
+```
+
+The main criterion is the number of visits in descending order.
+
+The second criterion is the client name in ascending order.
+
+Comparator:
+
+```java
+Comparator.comparingInt(Membership::getVisits)
+    .reversed()
+    .thenComparing(Membership::getClient);
+```
+
+Pipeline:
+
+```text
+memberships
+-> stream()
+-> sorted(comparator)
+-> limit(N)
+-> toList()
+```
+
+For `N = 5`, the actual order is:
+
+```text
+1. Maria — 110 visits
+2. Anna — 24 visits
+3. Ivan — 24 visits
+4. Ivan — 15 visits
+5. Oleh — 8 visits
+```
+
+The sixth record:
+
+```text
+Taras — 0 visits
+```
+
+is removed by `limit(5)`.
+
+The two records with 24 visits verify the second comparator criterion:
+
+```text
+Anna
+Ivan
+```
+
+because client names are sorted in ascending order when visit counts are equal.
+
+Rules for N:
+
+```text
+N < 0   -> IllegalArgumentException
+N = 0   -> empty result
+N > size -> all available elements
+```
+
+## 6. Grouping and Statistics
+
+Grouping uses:
+
+```java
+MembershipKind
+```
+
+as the key.
+
+The downstream collector:
+
+```java
+Collectors.summingInt(Membership::getVisits)
+```
+
+calculates the total number of visits for every membership kind.
+
+Actual grouped result:
+
+| Membership Kind | Total Visits |
+|---|---:|
+| MONTHLY | 47 |
+| ANNUAL | 134 |
+
+Visit statistics are calculated using:
+
+```java
+Collectors.summarizingInt(Membership::getVisits)
+```
+
+The result provides count, sum, minimum, maximum and average in one object.
+
+For an empty collection:
+
+```text
+count = 0
+sum = 0
+```
+
+The empty case is tested explicitly.
+
+Numbers printed by the application continue to use:
+
+```java
+Locale.ROOT
+```
+
+to provide stable formatting independently of the operating system locale.
+
+## 7. Compound Comparator
+
+The comparator used by the top-N query is:
+
+```java
+Comparator<Membership> comparator =
+    Comparator.comparingInt(Membership::getVisits)
+        .reversed()
+        .thenComparing(Membership::getClient);
+```
+
+The first criterion is:
+
+```text
+visits — descending
+```
+
+The second criterion is:
+
+```text
+client — ascending
+```
+
+`reversed()` is applied only to the visits comparator before `thenComparing`.
+
+This preserves the required rule:
+
+```text
+visits descending,
+client ascending
+```
+
+After sorting, the query executes:
+
+```java
+.limit(n)
+```
+
+Therefore, the collection is sorted before truncation.
+
+This ensures that top-N means the N best elements of the complete input collection.
+
+## 8. Optional Search
+
+The search method is:
+
+```java
+findByClient(...)
+```
+
+Search key:
+
+```text
+client
+```
+
+Implementation:
+
+```java
+return memberships.stream()
+    .filter(membership ->
+        membership.getClient().equals(client))
+    .findFirst();
+```
+
+Result type:
+
+```text
+Optional<Membership>
+```
+
+### Existing Result
+
+The dataset contains two records with client:
+
+```text
+Ivan
+```
+
+`findFirst()` returns the first one in encounter order.
+
+Actual first result:
+
+```text
+client = Ivan
+plan = Standard
+visits = 24
+```
+
+### Missing Result
+
+Searching for:
+
+```text
+Unknown
+```
+
+returns:
+
+```text
+Optional.empty()
+```
+
+The method never returns `null`.
+
+## 9. Equivalence: Loop → Stream API → Result
+
+| Previous implementation | Stream API implementation | Result |
+|---|---|---|
+| manual visit accumulation and division | `visitStatistics().getAverage()` | `47.33` |
+| `totalRevenue += price` | `mapToDouble(Membership::getPrice).sum()` | `8700.00` |
+| `Math.max(maxMonths, months)` | `mapToInt(Membership::getMonths).max()` | `12` |
+| loop over `costPerVisit()` | `mapToDouble(...).anyMatch(...)` | no invalid values |
+| manual conditional selection | `filter(...)` | 5 active records in query dataset |
+| manual extraction | `map(...)` | client-name list |
+| manually updated map | `groupingBy(..., summingInt(...))` | MONTHLY 47, ANNUAL 134 |
+| manual statistical variables | `summarizingInt(...)` | count 6, sum 181, min 0, max 110 |
+| manual sorting/selection | `sorted(...).limit(5)` | correct top-5 |
+
+### LAB_03 Output
+
+```text
+Line 4 skipped: invalid numeric value
+Line 5 skipped: invalid number format
+Valid records: 3
+Average visits: 47.33
+Total revenue: 8700.00
+Longest membership: 12 months
+```
+
+### LAB_04 Output
+
+```text
+Line 4 skipped: invalid numeric value
+Line 5 skipped: invalid number format
+Valid records: 3
+Average visits: 47.33
+Total revenue: 8700.00
+Longest membership: 12 months
+```
+
+The external results are identical.
+
+Therefore, changing the implementation from manual accumulation to Stream API did not change the observable behavior of the application.
+
+## 10. Testing
+
+The previous tests from LAB_01, LAB_02 and LAB_03 remain in the project.
+
+A new test class was added:
+
+```text
+MembershipQueriesTest.java
+```
+
+The new tests cover:
+
+- filter query;
+- filter boundary with zero visits;
+- map query;
+- grouping result;
+- summary statistics;
+- top-5;
+- comparator tie-breaking;
+- `N = 0`;
+- N greater than collection size;
+- negative N;
+- duplicated client key;
+- Optional existing result;
+- Optional missing result;
+- empty collection;
+- absence of input collection mutation.
+
+### Six-Record Dataset
+
+The Stream tests contain six records:
+
+```text
+Ivan  — 24 visits
+Maria — 110 visits
+Oleh  — 8 visits
+Anna  — 24 visits
+Taras — 0 visits
+Ivan  — 15 visits
+```
+
+This dataset verifies:
+
+- a duplicated search key (`Ivan`);
+- filter boundary (`Taras`, 0 visits);
+- comparator tie (`Anna` and `Ivan`, both 24);
+- top-5 truncation;
+- different membership kinds.
+
+### Local Commands
 
 ```powershell
 .\mvnw.cmd test
@@ -287,27 +657,21 @@ Result:
 BUILD SUCCESS
 ```
 
-SpotBugs also completed successfully.
+SpotBugs also completes successfully.
 
-During development SpotBugs initially reported:
+### Input Immutability
 
-```text
-CT_CONSTRUCTOR_THROW
+A dedicated test creates a copy of the original collection, executes all queries and then checks:
+
+```java
+assertEquals(original, source);
 ```
 
-for the abstract `Membership` constructor.
+Therefore, the Stream API queries do not mutate the source collection.
 
-The constructor was corrected by validating arguments before assigning the object state.
+## 11. Infrastructure
 
-After correction:
-
-```text
-BUILD SUCCESS
-```
-
-## 10. Infrastructure
-
-The project continues to use:
+The existing infrastructure remains:
 
 - Java 21;
 - Maven;
@@ -317,10 +681,10 @@ The project continues to use:
 - Maven Shade Plugin;
 - GitHub Actions.
 
-Current version:
+Project version:
 
 ```text
-1.2.0
+1.3.0
 ```
 
 Commands:
@@ -331,226 +695,317 @@ Commands:
 .\mvnw.cmd package
 ```
 
-Run JAR:
+Executable JAR:
 
 ```powershell
-java -jar target\lab01-1.2.0.jar
+java -jar target\lab01-1.3.0.jar
 ```
 
 Version check:
 
 ```powershell
-java -jar target\lab01-1.2.0.jar --version
+java -jar target\lab01-1.3.0.jar --version
 ```
 
 Result:
 
 ```text
-lab01 1.2.0
+lab01 1.3.0
 ```
 
-GitHub Actions runs on:
-
-- Windows;
-- Ubuntu;
-- macOS.
-
-The generated JAR is uploaded as a GitHub Actions artifact.
-
-**Final CI:** will be added after the final Pull Request run.  
-**JAR artifact:** will be available from the final GitHub Actions run.  
-**Git tag:** v1.2.0.
-
-## 11. GitHub Issues and Pull Request
-
-The work was performed in:
+GitHub Actions is configured to execute verification on:
 
 ```text
-LAB_03
+Ubuntu
+Windows
+macOS
 ```
+
+The workflow uploads:
+
+```text
+target/lab01-1.3.0.jar
+```
+
+as a `lab04` artifact.
+
+**Final CI:** to be added after the LAB_04 Pull Request finishes successfully.  
+**JAR artifact:** available from the final LAB_04 Actions run.  
+**Git tag:** v1.3.0 after the final Pull Request is merged.
+
+## 12. GitHub Issues and Pull Request
+
+LAB_04 was developed in the branch:
+
+```text
+LAB_04
+```
+
+The following Issues were used:
 
 | Issue | Change | Verification |
 |---|---|---|
-| #26 | Implement LAB_03 Membership hierarchy | Compilation and hierarchy tests |
-| #27 | Implement LAB_03 membership subtypes | Subtype and polymorphism tests |
-| #28 | Add MembershipKind enum | Enum tests |
-| #29 | Implement Membership equality | HashSet and hash-code tests |
-| #30 | Add LAB_03 tests | Maven test and verify |
-| #31 | Update LAB_03 documentation | Documentation and build verification |
+| #33 | Implement LAB_04 active membership filter | filter tests and boundary case |
+| #34 | Implement LAB_04 client mapping | map result test |
+| #35 | Implement LAB_04 visits grouping | grouping result test |
+| #36 | Implement LAB_04 visit statistics | summary-statistics test |
+| #37 | Implement LAB_04 top memberships query | top-N and comparator tests |
+| #38 | Implement LAB_04 Optional search | existing and missing search tests |
+| #39 | Add LAB_04 stream query tests | Maven test and verify |
+| #40 | Update LAB_04 documentation | README, REPORT and Javadoc |
+| #41 | Verify LAB_04 CI and release | verify, JAR, CI, version and tag |
 
-The final Pull Request merges:
+Duplicate Issues #42–#50 were accidentally created during command-line Issue creation and were closed as duplicates of #33–#41.
 
-```text
-LAB_03 -> main
-```
-
-## 12. Behavior Comparison
-
-### LAB_02 result
+The final Pull Request will merge:
 
 ```text
-Line 4 skipped: invalid numeric value
-Line 5 skipped: invalid number format
-Valid records: 3
-Average visits: 47.33
-Total revenue: 8700.00
-Longest membership: 12 months
+LAB_04 -> main
 ```
 
-### LAB_03 result
+The Pull Request will contain:
 
 ```text
-Line 4 skipped: invalid numeric value
-Line 5 skipped: invalid number format
-Valid records: 3
-Average visits: 47.33
-Total revenue: 8700.00
-Longest membership: 12 months
+Closes #33
+Closes #34
+Closes #35
+Closes #36
+Closes #37
+Closes #38
+Closes #39
+Closes #40
+Closes #41
 ```
 
-The results are identical.
+## 13. Comparison of Implementations
 
-LAB_02 used one concrete `Membership` class.
+### Loop-Based Implementation
 
-LAB_03 uses:
+The previous implementation explicitly described every processing step:
 
 ```text
-Membership
-├── MonthlyMembership
-└── AnnualMembership
+create accumulator
+iterate
+check condition
+update accumulator
+continue
 ```
 
-The internal model changed while the external report remained compatible.
+This style is straightforward for simple algorithms but combines traversal and calculation in one block.
 
-## 13. Academic Integrity
+### Stream-Based Implementation
 
-ChatGPT was used as an AI assistant during LAB_03.
+The Stream API version describes the requested result:
 
-### AI contribution
+```text
+source
+-> filter/map
+-> grouping/statistics/sorting
+-> result
+```
 
-ChatGPT was used for:
+For example:
 
-- analysis of LAB_03 requirements;
-- planning the class hierarchy;
-- recommendations for inheritance and polymorphism;
-- creation of enum and equality logic;
-- preparation of JUnit tests;
-- analysis of the SpotBugs error;
-- Git and GitHub workflow guidance;
-- documentation preparation.
+```java
+memberships.stream()
+    .mapToDouble(Membership::getPrice)
+    .sum();
+```
 
-### Accepted recommendations
+directly describes the operation “sum all membership prices”.
 
-The following recommendations were used:
+Similarly:
 
-- making `Membership` abstract;
-- creating `MonthlyMembership`;
-- creating `AnnualMembership`;
-- creating `MembershipKind`;
-- using `costPerVisit()` as the polymorphic method;
-- implementing `equals()` and `hashCode()`;
-- testing equality using `HashSet`;
-- preserving the previous output.
+```java
+memberships.stream()
+    .sorted(comparator)
+    .limit(n)
+    .toList();
+```
 
-### Corrected recommendations
+directly describes the top-N operation.
 
-The first constructor implementation generated the SpotBugs `CT_CONSTRUCTOR_THROW` warning.
+### Readability
 
-The implementation was changed so validation is performed before the object state is assigned.
+Stream API improved readability for:
 
-The exact subtype classification and cost-per-visit formulas were project decisions because the methodology defines the required hierarchy and polymorphic operation but does not provide an exact formula.
+- filtering;
+- transformation;
+- grouping;
+- aggregation;
+- sorting;
+- Optional search.
 
-### My contribution
+However, readability should not be evaluated only by counting lines of code.
+
+A shorter stream pipeline can still be difficult to understand if:
+
+- too many unrelated operations are placed in one chain;
+- ordering is incorrect;
+- side effects are introduced;
+- comparator rules are unclear.
+
+For this reason, the LAB_04 queries are implemented as separate named methods.
+
+## 14. Academic Integrity
+
+ChatGPT was used as a generative AI assistant during LAB_04.
+
+### AI Roles
+
+The assistant was used as:
+
+- requirements consultant;
+- development assistant;
+- test-case reviewer;
+- validator of boundary cases;
+- DevOps assistant;
+- documentation assistant;
+- Git/GitHub workflow assistant.
+
+### Example Requests
+
+The requests included:
+
+- analysis of LAB_04 requirements;
+- identification of the requirements for variant 20;
+- design of Stream API methods;
+- preparation of query tests;
+- verification of top-N boundary conditions;
+- comparison of loop and Stream API implementations;
+- Maven and JAR verification guidance;
+- README and REPORT preparation.
+
+### Accepted Recommendations
+
+The following recommendations were accepted:
+
+- creating `MembershipQueries`;
+- keeping every query in a separate named method;
+- using `filter` for active memberships;
+- using `map` for client names;
+- using `groupingBy` with `summingInt`;
+- using `summarizingInt`;
+- using `reversed().thenComparing(...)`;
+- using `Optional` and `findFirst`;
+- testing negative, zero and oversized N;
+- testing an empty collection;
+- testing a duplicated client;
+- checking that the input collection is not modified.
+
+### Rejected or Adapted Recommendations
+
+The LAB_04 variant description contains start and end date fields for gym memberships.
+
+Changing the existing LAB_03 model to these fields was rejected because the laboratory methodology also requires preserving the previous domain model and input format.
+
+Instead, the existing model was retained and the active-membership rule was adapted to:
+
+```text
+visits > 0
+```
+
+This adaptation is explicitly documented in the report and tested.
+
+The application report was also not expanded with the five query results because this would unnecessarily change the external behavior preserved from previous laboratory works. Query results are verified by tests and documented separately.
+
+### Corrected Issues
+
+Duplicate GitHub Issues were accidentally created while testing command-line Issue creation.
+
+The duplicate Issues #42–#50 were closed and the original #33–#41 remained as the LAB_04 work items.
+
+### My Contribution
 
 My contribution included:
 
-- creating the LAB_03 branch;
-- creating GitHub Issues;
-- adding and reviewing source files;
+- creating the `LAB_04` branch;
+- creating and managing GitHub Issues;
+- integrating the Stream API query class;
+- reviewing Stream pipelines;
 - running tests;
 - running SpotBugs;
-- debugging errors;
-- verifying the JAR;
-- comparing LAB_02 and LAB_03 output;
-- updating Maven and CI configuration;
+- executing the packaged JAR;
+- comparing old and new output;
+- updating the Maven version;
+- updating GitHub Actions;
+- reviewing and updating documentation;
 - committing and pushing the implementation.
 
 All submitted code was reviewed and understood before inclusion in the project.
 
-## 14. Control Questions
+## 15. Control Questions
 
-1. **What common problem does the base type solve?**  
-   It stores shared membership fields and validation rules in one place.
+1. **How is a stream different from a collection?**  
+   A collection stores data, while a stream describes operations that process data from a source.
 
-2. **What is the difference between extends and implements?**  
-   `extends` inherits from a class, while `implements` provides the behavior required by an interface.
+2. **What parts does a typical Stream API pipeline contain?**  
+   A source, zero or more intermediate operations and a terminal operation.
 
-3. **Why can a base class be abstract?**  
-   It represents common behavior while preventing creation of an incomplete generic object.
+3. **Why are intermediate operations called lazy?**  
+   They do not process the elements until a terminal operation starts the pipeline.
 
-4. **What does super(...) do?**  
-   It calls the constructor of the parent class.
+4. **What does filter do and what type does its predicate have?**  
+   `filter` keeps elements for which a `Predicate<T>` returns `true`.
 
-5. **What does @Override do?**  
-   It verifies that a method overrides a method from the parent type.
+5. **How is map different from mapToDouble?**  
+   `map` returns an object stream, while `mapToDouble` produces a primitive `DoubleStream`.
 
-6. **What is polymorphism?**  
-   It allows the same base-type method call to execute different implementations depending on the actual object.
+6. **What is distinct used for and what determines its result?**  
+   It removes duplicate elements according to `equals()` and `hashCode()`.
 
-7. **When should an interface or abstract class be used?**  
-   An abstract class is useful when objects share state and implementation. An interface is useful mainly for defining a common capability.
+7. **Why is sorted().limit(N) different from limit(N).sorted()?**  
+   The first sorts the complete stream and then selects N elements. The second selects N input elements first and only sorts that subset.
 
-8. **What is an is-a relationship?**  
-   It means that one type is a specialized form of another type.
+8. **What is the role of a terminal operation?**  
+   It starts stream processing and produces the final result or side effect.
 
-9. **Why use enum?**  
-   It limits a value to a fixed set of valid categories.
+9. **When is Collectors.joining used?**  
+   It combines stream elements into one string with optional separators, prefix and suffix.
 
-10. **Why can enum values be compared with ==?**  
-    Each enum constant is represented by one fixed instance.
+10. **How does groupingBy build groups?**  
+    It calculates a key for every element and places elements or aggregated values into groups associated with those keys.
 
-11. **What rule connects equals and hashCode?**  
-    Equal objects must have the same hash code.
+11. **How can a sum be calculated inside each group?**  
+    By using a downstream collector such as `Collectors.summingInt` or `Collectors.summingDouble`.
 
-12. **Why are mutable HashMap keys dangerous?**  
-    Changing a field used by `hashCode()` can make the key impossible to find correctly.
+12. **What values does DoubleSummaryStatistics contain?**  
+    Count, sum, minimum, maximum and average.
 
-13. **Why can different subtypes be unequal?**  
-    Their concrete type can be part of their logical identity.
+13. **What happens to statistics for an empty stream?**  
+    Count and sum are zero. Minimum and maximum have special infinity values for `DoubleSummaryStatistics`, so empty input should be handled explicitly when those values are displayed.
 
-14. **How does a polymorphic collection work?**  
-    Objects of different subtypes are stored through their common base type.
+14. **How is a compound comparator created?**  
+    A comparator is created for the main key and then extended with `thenComparing` for the secondary key.
 
-15. **How do tests prove different subtype behavior?**  
-    They call `costPerVisit()` for monthly and annual memberships and verify different results.
+15. **Why should reversed() be applied before thenComparing in this project?**  
+    Only the primary visits criterion must be descending. The client criterion must remain ascending.
 
-16. **How is equality tested in HashSet?**  
-    Two equal memberships are added and the set is checked to contain only one element.
+16. **What problem does Optional solve in search methods?**  
+    It explicitly represents that a result may be absent instead of returning `null`.
 
-17. **What do sealed and permits do?**  
-    They restrict which classes are allowed to extend a type.
+17. **What is the difference between orElse, orElseThrow and ifPresent?**  
+    `orElse` returns a fallback value, `orElseThrow` throws an exception when empty, and `ifPresent` performs an action only when a value exists.
 
-18. **Why should switch not replace polymorphism?**  
-    Different behavior should remain inside each subtype instead of being duplicated in external code.
+18. **Why is accumulating results in an external mutable list inside forEach undesirable?**  
+    It introduces side effects and makes the stream pipeline harder to reason about and safely parallelize.
 
-19. **What previous behavior must remain?**  
-    Previous tests, CSV format, calculated statistics and report output must remain compatible.
+19. **What must be checked when refactoring a loop into a stream?**  
+    The resulting values, order where relevant, duplicates, empty input, boundary conditions, lack of input mutation and compatibility with previous tests.
 
-20. **What best demonstrates polymorphism in this project?**  
-    Calling `membership.costPerVisit()` through a `Membership` reference while subclasses provide different implementations.
+20. **When can a parallel stream be justified?**  
+    When the dataset is sufficiently large, operations are suitable for parallel execution, shared mutable state is avoided and measurements show an actual benefit.
 
-## 15. Conclusion
+## 16. Conclusion
 
-In LAB_03, the gym membership model was converted into a polymorphic hierarchy.
+LAB_04 replaced the main collection-processing calculations with declarative Stream API pipelines.
 
-The abstract `Membership` class stores common state and validation.
+The project now contains separate methods for filtering, mapping, grouping, summary statistics, top-N processing and Optional search.
 
-`MonthlyMembership` and `AnnualMembership` provide different implementations of `costPerVisit()`.
+The compound comparator provides deterministic ordering, while Optional explicitly represents an absent search result.
 
-`MembershipKind` represents fixed membership categories.
+Tests cover normal input, empty collections, duplicates, filter boundaries, comparator tie-breaking, top-N boundaries and source immutability.
 
-`equals()` and `hashCode()` allow membership objects to work correctly in hash-based collections.
+The previous polymorphic model, tests and external report remain compatible.
 
-The previous tests and external output remain compatible.
-
-The resulting model provides the foundation for the next laboratory work.
+The Stream API query layer created in LAB_04 provides a reusable foundation for subsequent laboratory works.
