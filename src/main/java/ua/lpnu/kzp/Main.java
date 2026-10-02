@@ -5,6 +5,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.IntSummaryStatistics;
 import java.util.List;
 import java.util.Locale;
 
@@ -101,35 +102,33 @@ public class Main {
             }
 
             int validCount = memberships.size();
-            int totalVisits = 0;
-            double totalRevenue = 0;
-            int maxMonths = 0;
 
-            for (Membership membership : memberships) {
-                VisitsPrice visitsPrice = new VisitsPrice(
-                    membership.getVisits(),
-                    membership.getPrice()
+            IntSummaryStatistics visitStatistics =
+                MembershipQueries.visitStatistics(memberships);
+
+            double averageVisits =
+                visitStatistics.getAverage();
+
+            double totalRevenue = memberships.stream()
+                .mapToDouble(Membership::getPrice)
+                .sum();
+
+            int maxMonths = memberships.stream()
+                .mapToInt(Membership::getMonths)
+                .max()
+                .orElse(0);
+
+            boolean invalidCostPerVisit = memberships.stream()
+                .mapToDouble(Membership::costPerVisit)
+                .anyMatch(cost ->
+                    !Double.isFinite(cost) || cost < 0
                 );
 
-                double costPerVisit = membership.costPerVisit();
-
-                if (!Double.isFinite(costPerVisit) || costPerVisit < 0) {
-                    throw new IllegalStateException(
-                        "Invalid cost per visit"
-                    );
-                }
-
-                totalVisits += visitsPrice.visits();
-                totalRevenue += visitsPrice.price();
-                maxMonths = Math.max(
-                    maxMonths,
-                    membership.getMonths()
+            if (invalidCostPerVisit) {
+                throw new IllegalStateException(
+                    "Invalid cost per visit"
                 );
             }
-
-            double averageVisits = validCount == 0
-                ? 0
-                : (double) totalVisits / validCount;
 
             String report = String.format(
                 Locale.ROOT,
