@@ -1,217 +1,432 @@
-# Gym Membership Report — LAB_04
+# Gym Membership Report — LAB_05
 
-Laboratory Work No. 4 for the Cross-Platform Programming course.
+Laboratory Work No. 5 for the Cross-Platform Programming course.
 
 **Variant:** 20 — Gym  
-**Version:** 1.3.0
+**Version:** 1.4.0
 
 ## Description
 
-LAB_04 refactors collection processing from manual loops to Java Stream API.
+LAB_05 extends the existing gym membership project with:
 
-The project preserves the polymorphic membership model from LAB_03 and keeps the previous external report unchanged.
+- a generic `Repository<T>`;
+- a custom checked exception;
+- runtime CSV annotations;
+- a reflection-based generic CSV exporter;
+- a CSV parser with quoted and multiline field support;
+- UTF-8 file persistence;
+- CSV import for `MembershipRecord`;
+- object → CSV → object round-trip verification.
 
-## Domain Model
+The previous polymorphic model, Stream API queries, tests and external report output are preserved.
 
-The existing hierarchy is preserved:
+The goal of LAB_05 is to add persistence without creating a new repository or changing the project domain. :chatgpt-content-reference{index="0"}
 
-```text
-Membership
-├── MonthlyMembership
-└── AnnualMembership
-```
+## Variant 20
 
-The project also uses:
-
-```java
-MembershipKind.MONTHLY
-MembershipKind.ANNUAL
-```
-
-The input format remains:
+Domain:
 
 ```text
-client;plan;months;visits;price
+Gym
 ```
 
-## Stream API Queries
-
-Stream queries are implemented in:
+LAB_05 record:
 
 ```text
-MembershipQueries.java
+MembershipRecord
 ```
 
-### 1. Filter
-
-```java
-activeMemberships(...)
-```
-
-Selects memberships with:
+Fields:
 
 ```text
-visits > 0
+customer   : String
+kind       : MembershipKind
+startDate  : LocalDate
+endDate    : LocalDate
+visits     : int
 ```
 
-Because the existing LAB_03 model does not contain start and end dates, a membership with at least one recorded visit is treated as active for LAB_04.
-
-Pipeline:
+CSV column names:
 
 ```text
-source -> stream -> filter -> toList
+клієнт
+тип
+початок
+кінець
+відвідування
 ```
 
-### 2. Map
-
-```java
-clientNames(...)
-```
-
-Transforms membership objects into client names.
-
-Pipeline:
+Round-trip key:
 
 ```text
-source -> stream -> map -> toList
+customer + startDate
 ```
 
-### 3. Grouping
+These fields and the round-trip key correspond to variant 20. :chatgpt-content-reference{index="1"}
+
+## Generic Repository
+
+The application uses:
 
 ```java
-visitsByKind(...)
+Repository<T>
 ```
 
-Groups and sums visits by:
+The repository provides:
 
 ```java
-MembershipKind
+add(T item)
+all()
+find(Predicate<? super T> condition)
 ```
 
-Pipeline:
+Example:
+
+```java
+Repository<Membership> repository =
+    new Repository<>();
+
+repository.add(membership);
+
+List<Membership> memberships =
+    repository.all();
+```
+
+`all()` returns an immutable snapshot, so external code cannot modify the repository's internal list.
+
+The project does not use raw `Repository` types.
+
+## DataStorageException
+
+LAB_05 adds:
+
+```java
+DataStorageException
+```
+
+It supports:
+
+```java
+DataStorageException(String message)
+```
+
+and:
+
+```java
+DataStorageException(
+    String message,
+    Throwable cause
+)
+```
+
+The original technical cause is preserved.
+
+Examples include:
 
 ```text
-source
--> stream
--> groupingBy
--> summingInt
--> Map<MembershipKind, Integer>
+IOException
+NumberFormatException
+IllegalArgumentException
+reflection access errors
 ```
 
-An `EnumMap` is used because the grouping key is an enum.
+Errors are not silently replaced with empty results. :chatgpt-content-reference{index="2"}
 
-### 4. Statistics
+## CsvColumn Annotation
+
+CSV metadata is declared using:
 
 ```java
-visitStatistics(...)
+@CsvColumn
 ```
 
-Uses:
+The annotation uses:
 
 ```java
-Collectors.summarizingInt(Membership::getVisits)
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.FIELD)
 ```
 
-Result:
+Example:
+
+```java
+@CsvColumn("клієнт")
+private final String customer;
+```
+
+`RUNTIME` allows reflection to read the annotation while the program is running.
+
+`FIELD` restricts the annotation to fields.
+
+## MembershipRecord
+
+`MembershipRecord` is a flat persistence model used by LAB_05.
+
+Example:
+
+```java
+new MembershipRecord(
+    "Ivan Petrenko",
+    MembershipKind.MONTHLY,
+    LocalDate.of(2026, 10, 1),
+    LocalDate.of(2026, 10, 31),
+    12
+);
+```
+
+Validation includes:
 
 ```text
-IntSummaryStatistics
+customer must not be blank
+kind must not be null
+startDate must not be null
+endDate must not be null
+endDate must not be before startDate
+visits must not be negative
 ```
 
-It provides:
+`equals()` and `hashCode()` include all record fields so restored records can be compared with the original records.
 
-- count
-- sum
-- minimum
-- maximum
-- average
+## Deterministic CSV Column Order
 
-### 5. Top-N
+The generic exporter sorts fields by their Java field names.
 
-```java
-topMemberships(...)
-```
-
-Sorting rules:
+For `MembershipRecord`, the Java names are ordered as:
 
 ```text
-1. visits descending
-2. client ascending
-3. limit N
+customer
+endDate
+kind
+startDate
+visits
 ```
 
-Comparator:
-
-```java
-Comparator.comparingInt(Membership::getVisits)
-    .reversed()
-    .thenComparing(Membership::getClient)
-```
-
-Rules for N:
+Therefore, the actual CSV header is:
 
 ```text
-N < 0  -> IllegalArgumentException
-N = 0  -> empty list
-N > size -> all available elements
+клієнт,кінець,тип,початок,відвідування
 ```
 
-### Optional Search
+The displayed CSV column text comes only from `@CsvColumn`. The ordering comes from the Java field names. :chatgpt-content-reference{index="3"}
 
-```java
-findByClient(...)
-```
+## Generic CsvExporter
 
-Returns:
-
-```java
-Optional<Membership>
-```
-
-The first matching membership is returned.
-
-If no client is found:
+`CsvExporter` is generic and does not contain conditions for:
 
 ```text
-Optional.empty()
+MembershipRecord
+MonthlyMembership
+AnnualMembership
 ```
 
-No `null` value is returned.
+Its public operation is:
 
-## Test Dataset
+```java
+CsvExporter.write(
+    path,
+    type,
+    records
+);
+```
 
-The Stream API tests use six memberships.
+The exporter:
 
-The dataset contains:
+1. gets fields using reflection;
+2. keeps fields annotated with `@CsvColumn`;
+3. sorts them by Java field name;
+4. checks field accessibility;
+5. creates the header from annotation values;
+6. reads values from each object;
+7. applies CSV escaping;
+8. writes the result using UTF-8.
 
-- different membership subtypes;
-- duplicate client name `Ivan`;
-- zero visits as the filter boundary;
-- equal visit counts for comparator tie-breaking;
-- more than five records for testing top-5.
+This allows the same exporter to work with another flat annotated class without modifying `CsvExporter`. :chatgpt-content-reference{index="4"}
 
-The six-record query dataset is kept in tests so the original LAB_03 control input and output remain unchanged.
+## CSV Escaping
 
-## Previous Report Compatibility
+A value is surrounded by double quotes when it contains:
 
-LAB_03 used manual accumulation for several statistics.
+```text
+comma
+double quote
+carriage return
+line feed
+```
 
-LAB_04 replaces those calculations with Stream API operations.
+A quote inside a quoted value is doubled.
+
+Example source value:
+
+```text
+Taras, "Strong"
+Client
+```
+
+CSV representation:
+
+```text
+"Taras, ""Strong""
+Client"
+```
+
+Therefore, a normal `split(",")` is not sufficient for parsing the generated CSV. :chatgpt-content-reference{index="5"}
+
+## CsvParser
+
+`CsvParser` implements document-level CSV parsing.
+
+It supports:
+
+```text
+simple fields
+quoted commas
+escaped quotes
+Windows CRLF
+Unix LF
+multiline quoted fields
+```
+
+The complete document is parsed using:
+
+```java
+CsvParser.parseDocument(...)
+```
+
+Quoted commas and line breaks are treated as data instead of record separators.
+
+## CSV Import
+
+LAB_05 uses:
+
+```java
+MembershipCsvReader
+```
+
+to restore `MembershipRecord` objects.
+
+The file is read using:
+
+```java
+Files.readString(
+    path,
+    StandardCharsets.UTF_8
+);
+```
+
+The parser then reconstructs the document into fields.
+
+`MembershipRecord.fromCsvFields(...)` converts:
+
+```text
+customer -> String
+endDate  -> LocalDate
+kind     -> MembershipKind
+startDate -> LocalDate
+visits   -> int
+```
+
+The generic exporter remains domain-independent, while the import conversion is domain-specific.
+
+## Round-Trip
+
+Round-trip means:
+
+```text
+Java objects
+-> CSV
+-> CSV parser
+-> Java objects
+-> equality comparison
+```
+
+The demonstration uses five `MembershipRecord` objects.
+
+Command:
+
+```powershell
+java -jar target\lab01-1.4.0.jar --csv-demo
+```
+
+Actual result:
+
+```text
+CSV file: out\memberships.csv
+Original records: 5
+Restored records: 5
+Round-trip equal: true
+```
+
+This confirms that all five exported objects are restored without changing their values.
+
+Round-trip equality is a required part of LAB_05. :chatgpt-content-reference{index="6"}
+
+## CSV Test Data
+
+The demonstration contains five membership records.
+
+One record intentionally contains:
+
+```text
+Taras, "Strong"
+Client
+```
+
+This verifies:
+
+- comma escaping;
+- quote escaping;
+- multiline field parsing.
+
+The methodology requires at least five records and at least one record containing a comma, quote or line break. :chatgpt-content-reference{index="7"}
+
+## Empty Input
+
+The exporter can receive:
+
+```java
+List.of()
+```
+
+and still generate the CSV header because the record class is supplied separately:
+
+```java
+CsvExporter.write(
+    path,
+    MembershipRecord.class,
+    List.of()
+);
+```
+
+An entirely empty CSV document is restored as an empty collection.
+
+## Error Handling
+
+The implementation distinguishes several error levels:
+
+```text
+Model validation
+CSV format
+CSV value conversion
+File system
+Reflection
+```
 
 Examples:
 
 ```text
-manual total revenue
--> mapToDouble(...).sum()
-
-manual maximum months
--> mapToInt(...).max()
-
-manual average visits
--> IntSummaryStatistics
+wrong number of fields
+invalid integer
+invalid enum
+unclosed quote
+missing file
+class without annotated fields
 ```
 
-The external output remains:
+Where an underlying technical exception exists, it is preserved as `cause`.
+
+## Previous Project Compatibility
+
+The previous gym report still produces:
 
 ```text
 Line 4 skipped: invalid numeric value
@@ -222,32 +437,65 @@ Total revenue: 8700.00
 Longest membership: 12 months
 ```
 
-## Build and Test
+LAB_05 changes the storage mechanism from a direct list to:
 
-Windows:
+```java
+Repository<Membership>
+```
+
+but preserves the previous report values and Stream API processing.
+
+## Commands
+
+Run all tests:
 
 ```powershell
 .\mvnw.cmd test
+```
+
+Run tests and SpotBugs:
+
+```powershell
 .\mvnw.cmd verify
+```
+
+Create executable JAR:
+
+```powershell
 .\mvnw.cmd package
 ```
 
-Run:
+Run the original report:
 
 ```powershell
-java -jar target\lab01-1.3.0.jar
+java -jar target\lab01-1.4.0.jar
 ```
 
-Version:
+Check version:
 
 ```powershell
-java -jar target\lab01-1.3.0.jar --version
+java -jar target\lab01-1.4.0.jar --version
 ```
 
 Expected:
 
 ```text
-lab01 1.3.0
+lab01 1.4.0
+```
+
+Run LAB_05 CSV demonstration:
+
+```powershell
+java -jar target\lab01-1.4.0.jar --csv-demo
+```
+
+Expected:
+
+```text
+CSV file: out\memberships.csv
+Original records: 5
+Restored records: 5
+Round-trip equal: true
 ```
 
 ## Project Structure
@@ -260,36 +508,71 @@ src/main/java/ua/lpnu/kzp/
 ├── AnnualMembership.java
 ├── MembershipKind.java
 ├── MembershipQueries.java
+├── MembershipRecord.java
+├── MembershipCsvReader.java
+├── Repository.java
+├── CsvColumn.java
+├── CsvExporter.java
+├── CsvParser.java
+├── DataStorageException.java
+├── Lab05RoundTrip.java
 └── VisitsPrice.java
-
-src/test/java/ua/lpnu/kzp/
-├── MainTest.java
-├── MembershipTest.java
-├── MembershipHierarchyTest.java
-└── MembershipQueriesTest.java
 ```
+
+New LAB_05 tests include:
+
+```text
+RepositoryTest
+MembershipRecordTest
+CsvExporterTest
+CsvParserTest
+MembershipRoundTripTest
+```
+
+All previous tests remain in the project.
 
 ## Technologies
 
 - Java 21
-- Stream API
+- Java Generics
+- Reflection API
+- Custom annotations
+- Path and Files
+- UTF-8
+- Java Stream API
+- JUnit 5
 - Maven
 - Maven Wrapper
-- JUnit 5
 - SpotBugs
 - Maven Shade Plugin
 - GitHub Actions
 
-## CI
+## Continuous Integration
 
-GitHub Actions verifies the project on:
+GitHub Actions is configured for:
 
-- Windows
-- Ubuntu
-- macOS
+```text
+Ubuntu
+Windows
+macOS
+```
 
-The executable JAR is uploaded as a workflow artifact.
+The LAB_05 workflow runs Maven verification and uploads:
+
+```text
+target/lab01-1.4.0.jar
+```
+
+as an artifact named:
+
+```text
+lab05-<OS>-<run number>
+```
+
+Final CI status will be verified on the LAB_05 Pull Request.
 
 ## Repository
 
+```text
 https://github.com/OneeTwo/kzp-rybachuk
+```
