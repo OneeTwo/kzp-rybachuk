@@ -175,12 +175,16 @@ The executable JAR is uploaded as a workflow artifact.
 
 Successful LAB_01 CI run:
 
-https://github.com/OneeTwo/kzp-rybachuk/actions/runs/35715129138
+https://github.com/OneeTwo/kzp-rybachuk/actions/runs/37315128863
 
 ## Review Corrections
 
 The post-review correction is tracked in:
 
 https://github.com/OneeTwo/kzp-rybachuk/issues/62
+
+Review Pull Request:
+
+https://github.com/OneeTwo/kzp-rybachuk/pull/63
 
 The corrections remove leftover merge-conflict text, remove a duplicate file write, separate processing stages more clearly, and expand the test suite.
