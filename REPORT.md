@@ -162,9 +162,9 @@ windows-latest
 macos-latest
 ~~~
 
-Successful LAB_01 CI run:
+Successful post-review LAB_01 CI run:
 
-https://github.com/OneeTwo/kzp-rybachuk/actions/runs/35715129138
+https://github.com/OneeTwo/kzp-rybachuk/actions/runs/37315128863
 
 The JAR artifacts for Linux, Windows and macOS are attached to that successful workflow run.
 
@@ -193,6 +193,10 @@ The work was organized with GitHub Issues and Pull Requests.
 Post-review issue:
 
 https://github.com/OneeTwo/kzp-rybachuk/issues/62
+
+Post-review Pull Request:
+
+https://github.com/OneeTwo/kzp-rybachuk/pull/63
 
 The review correction removes defects found after the original submission and expands the test suite.
 
@@ -259,7 +263,7 @@ The current tests verify:
 
 Important edge cases from the assignment are therefore covered directly.
 
-The main source and the updated test source were also checked for Java 21 compilation before pushing the review correction.
+GitHub Actions confirmed: Tests run: 12, Failures: 0, Errors: 0, Skipped: 0. SpotBugs completed successfully on the review CI run.
 
 Commands used for final verification:
 
@@ -269,7 +273,7 @@ Commands used for final verification:
 .\mvnw.cmd package
 ~~~
 
-The final review PR is used to confirm the complete JUnit/SpotBugs result on all three operating systems.
+The review CI completed successfully on Ubuntu, Windows and macOS.
 
 ## 9. Documentation
 
