@@ -14,11 +14,7 @@ def active_memberships(
     reference_date: date = DEFAULT_REFERENCE_DATE,
 ) -> list[MembershipRecord]:
     """Return memberships active on the reference date."""
-    return [
-        record
-        for record in records
-        if record["start"] <= reference_date <= record["end"]
-    ]
+    return [record for record in records if record["start"] <= reference_date <= record["end"]]
 
 
 def unique_customers(records: list[MembershipRecord]) -> set[str]:
@@ -30,11 +26,7 @@ def visits_by_kind(records: list[MembershipRecord]) -> dict[str, int]:
     """Aggregate visits by membership kind in deterministic key order."""
     kinds = {str(record["kind"]) for record in records}
     return {
-        kind: sum(
-            int(record["visits"])
-            for record in records
-            if record["kind"] == kind
-        )
+        kind: sum(int(record["visits"]) for record in records if record["kind"] == kind)
         for kind in sorted(kinds)
     }
 
