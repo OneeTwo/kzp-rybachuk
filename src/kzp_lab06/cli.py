@@ -6,7 +6,7 @@ import argparse
 import sys
 from datetime import date
 from pathlib import Path
-from typing import Sequence
+from collections.abc import Sequence
 
 from . import __version__
 from .errors import DataError
