@@ -270,7 +270,7 @@ Run:
 .\.venv\Scripts\python.exe -m pytest
 ~~~
 
-The final exact test count is recorded after the green CI run.
+The complete repository test suite contains 51 tests. All 51 passed on the LAB_07 branch CI.
 
 ## 8. Report Comparison
 
@@ -378,7 +378,13 @@ kzp-lab07 1.6.0
 
 CI uses Python 3.12 on Ubuntu, Windows and macOS. It runs pytest, Ruff, wheel build, installs the exact wheel into a new clean virtual environment and runs the packaged LAB_07 CLI.
 
-The final CI link, artifacts and tag are recorded after Pull Request verification.
+Successful LAB_07 branch CI:
+
+https://github.com/OneeTwo/kzp-rybachuk/actions/runs/39172672483
+
+Result: 51 pytest tests passed; Ruff lint and format checks passed; the LAB_07 wheel built successfully, installed in a clean virtual environment, and the packaged CLI ran successfully on Ubuntu, Windows and macOS. Wheel artifacts were uploaded for all three operating systems.
+
+The final Pull Request CI and Git tag are recorded after merge.
 
 ## 10. GitHub Issues and Pull Request
 
