@@ -49,9 +49,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         try:
             reference_date = date.fromisoformat(args.reference_date)
         except ValueError as error:
-            raise DataError(
-                "Reference date must use ISO YYYY-MM-DD"
-            ) from error
+            raise DataError("Reference date must use ISO YYYY-MM-DD") from error
 
         records = load_records(args.input)
         report = format_report(records, reference_date)
