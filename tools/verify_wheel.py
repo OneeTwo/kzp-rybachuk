@@ -1,4 +1,4 @@
-"""Verify the built wheel in an isolated virtual environment."""
+"""Verify the LAB_07 wheel in an isolated virtual environment."""
 
 from __future__ import annotations
 
@@ -12,10 +12,10 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def main() -> int:
-    """Install the wheel into a clean venv and run the packaged CLI."""
-    wheels = sorted((ROOT / "dist").glob("*.whl"))
+    """Install the LAB_07 wheel into a clean venv and run the packaged CLI."""
+    wheels = sorted((ROOT / "dist").glob("kzp_lab07_gym-*.whl"))
     if len(wheels) != 1:
-        raise RuntimeError(f"Expected exactly one wheel, found {len(wheels)}")
+        raise RuntimeError(f"Expected exactly one LAB_07 wheel, found {len(wheels)}")
 
     with tempfile.TemporaryDirectory() as temporary:
         env_dir = Path(temporary) / "wheel-env"
@@ -36,7 +36,7 @@ def main() -> int:
             [
                 str(python),
                 "-m",
-                "kzp_lab06.cli",
+                "kzp_lab07.cli",
                 str(ROOT / "data" / "lab06_input.csv"),
                 str(output),
             ],
@@ -47,9 +47,11 @@ def main() -> int:
 
         report = output.read_text(encoding="utf-8")
         if "Active memberships: 5" not in report:
-            raise RuntimeError("Installed wheel produced an unexpected report")
-        if "kzp_lab06" in result.stderr:
-            raise RuntimeError("Installed CLI wrote an unexpected error")
+            raise RuntimeError("Installed LAB_07 wheel produced an unexpected report")
+        if "Average visits: 42.40" not in report:
+            raise RuntimeError("Installed LAB_07 wheel changed the LAB_06 report")
+        if result.stderr:
+            raise RuntimeError(f"Installed LAB_07 CLI wrote to stderr: {result.stderr}")
 
     return 0
 
