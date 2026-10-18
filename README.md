@@ -146,3 +146,7 @@ LAB_06 is tracked by Issues #64–#70:
 - #68 Ruff and wheel packaging;
 - #69 cross-platform Python CI;
 - #70 documentation.
+
+## Pull Request
+
+https://github.com/OneeTwo/kzp-rybachuk/pull/71
