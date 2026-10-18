@@ -36,9 +36,7 @@ def format_report(
     if best is None:
         lines.append("Leader: none")
     else:
-        lines.append(
-            f"Leader: {best['customer']} ({int(best['visits'])} visits)"
-        )
+        lines.append(f"Leader: {best['customer']} ({int(best['visits'])} visits)")
 
     lines.append("Visits by kind:")
     if totals:
