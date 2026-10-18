@@ -28,9 +28,7 @@ def _parse_date(row: dict[str, str | None], field: str, row_number: int) -> date
     try:
         return date.fromisoformat(value)
     except ValueError as error:
-        raise DataError(
-            f"Row {row_number}: field {field} must use ISO YYYY-MM-DD"
-        ) from error
+        raise DataError(f"Row {row_number}: field {field} must use ISO YYYY-MM-DD") from error
 
 
 def _parse_visits(row: dict[str, str | None], row_number: int) -> int:
