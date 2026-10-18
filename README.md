@@ -223,6 +223,12 @@ Each job runs pytest, Ruff lint, Ruff format check, wheel build, clean-environme
 
 The Java CI workflow and previous Java tests remain in the repository.
 
+Successful LAB_07 branch CI:
+
+https://github.com/OneeTwo/kzp-rybachuk/actions/runs/39172672483
+
+Current result: 51 pytest tests passed, Ruff lint and formatting passed, the 1.6.0 wheel built and installed in a clean environment, and all three OS jobs succeeded.
+
 ## GitHub Issues
 
 LAB_07 work is tracked by:
