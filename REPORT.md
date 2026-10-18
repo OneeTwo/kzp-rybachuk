@@ -175,7 +175,7 @@ Windows commands:
 .\.venv\Scripts\python.exe -m build
 ~~~
 
-The wheel is generated in dist/ and is ignored by Git.
+The wheel is generated in dist/ and is ignored by Git. CI then creates a clean virtual environment, installs the exact wheel with --no-deps and runs the packaged CLI against the variant input.
 
 Python package version: 1.5.0.  
 Final Git tag after verification: v1.5.0.
@@ -190,7 +190,11 @@ The CI matrix contains Ubuntu, Windows and macOS. Every job installs the package
 
 The previous Java workflow is preserved.
 
-The final CI and artifact links are added after the Pull Request is created.
+Successful LAB_06 branch CI:
+
+https://github.com/OneeTwo/kzp-rybachuk/actions/runs/39167095377
+
+Result: 23 pytest tests passed; Ruff lint and format checks passed; wheel build and isolated wheel installation/run passed on Ubuntu, Windows and macOS. Wheel artifacts were uploaded for all three operating systems.
 
 ## 13. GitHub Issues and Pull Request
 
