@@ -14,8 +14,7 @@ def test_cli_success_writes_report_and_returns_zero(
     input_path = tmp_path / "input.csv"
     output_path = tmp_path / "reports" / "summary.txt"
     input_path.write_text(
-        "customer,kind,start,end,visits\n"
-        "Ivan,MONTHLY,2026-10-01,2026-10-31,12\n",
+        "customer,kind,start,end,visits\nIvan,MONTHLY,2026-10-01,2026-10-31,12\n",
         encoding="utf-8",
     )
 
@@ -34,8 +33,7 @@ def test_cli_bad_csv_returns_nonzero_and_stderr(
     input_path = tmp_path / "input.csv"
     output_path = tmp_path / "report.txt"
     input_path.write_text(
-        "customer,kind,start,end,visits\n"
-        "Ivan,MONTHLY,2026-10-01,2026-10-31,abc\n",
+        "customer,kind,start,end,visits\nIvan,MONTHLY,2026-10-01,2026-10-31,abc\n",
         encoding="utf-8",
     )
 
