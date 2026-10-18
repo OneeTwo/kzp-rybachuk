@@ -242,3 +242,7 @@ LAB_07 work is tracked by:
 - #78 — README and REPORT.
 
 The final Pull Request targets main and closes Issues #72–#78.
+
+## Pull Request
+
+https://github.com/OneeTwo/kzp-rybachuk/pull/79
