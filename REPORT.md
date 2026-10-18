@@ -1,147 +1,72 @@
-# Laboratory Work No. 6 Report
+# Laboratory Work No. 7 Report
 
 ## 1. Topic, Number and Variant
 
-**Topic:** Python Data Processing  
-**Laboratory Work:** No. 6  
+**Topic:** Object-Oriented Data Processing in Python  
+**Laboratory Work:** No. 7  
 **Variant:** 20 — Gym  
 **Operating System:** Windows 11  
 **Python:** 3.11+; CI uses Python 3.12  
-**Version:** 1.5.0
+**Version:** 1.6.0
 
 **Repository:**  
 https://github.com/OneeTwo/kzp-rybachuk
 
 **Branch:**  
-https://github.com/OneeTwo/kzp-rybachuk/tree/LAB_06
+https://github.com/OneeTwo/kzp-rybachuk/tree/LAB_07
 
-LAB_06 adds a Python stage without deleting the Java sources, Java tests, Maven Wrapper or previous Java CI.
+Variant model:
 
-## 2. Objective
+~~~text
+Membership
+├── MonthlyMembership
+└── AnnualMembership
+~~~
 
-The goal is to create a modular Python application that reads Gym CSV data, converts fields to typed values, analyses them with lists, dictionaries, sets and comprehensions, produces a deterministic report, and writes it to a UTF-8 text file.
+Common operation: visit_cost().
 
-The complete solution also keeps pytest, Ruff, wheel packaging, versioning, GitHub Issues, Pull Request and cross-platform CI.
+Variant summary: membership completion state.
 
-## 3. CSV Format
+The methodology keeps the previous CSV fields and external report unchanged.
 
-Header:
+## 2. State Before and After
+
+Before LAB_07, LAB_06 represented every CSV row as dict[str, object]. Validation happened in loader helpers and analysis accessed values by dictionary keys.
+
+Before:
+
+~~~python
+{
+    "customer": "Maria Koval",
+    "kind": "ANNUAL",
+    "start": date(2026, 1, 1),
+    "end": date(2026, 12, 31),
+    "visits": 105,
+}
+~~~
+
+After LAB_07, the loader creates objects directly:
+
+~~~python
+AnnualMembership(
+    "Maria Koval",
+    date(2026, 1, 1),
+    date(2026, 12, 31),
+    105,
+)
+~~~
+
+The main difference is internal responsibility. State validation belongs to the object model, subtype-specific behavior belongs to the subtype, and analysis works through a stable object contract.
+
+The previous src/kzp_lab06 package and its tests remain in the repository. This makes the old and new implementations directly comparable.
+
+The external CSV contract is unchanged:
 
 ~~~text
 customer,kind,start,end,visits
 ~~~
 
-Types after loading:
-
-~~~text
-customer -> str
-kind     -> str
-start    -> datetime.date
-end      -> datetime.date
-visits   -> int
-~~~
-
-Input file: data/lab06_input.csv
-
-Example escaped row:
-
-~~~text
-"Taras, Strong",MONTHLY,2026-10-05,2026-11-05,15
-~~~
-
-A physical file without a header is rejected with DataError. A header-only file is valid and produces an empty list. CSV is read with csv.DictReader, UTF-8 and newline="".
-
-## 4. Module Structure
-
-~~~text
-src/kzp_lab06/
-├── __init__.py
-├── __main__.py
-├── analysis.py
-├── cli.py
-├── errors.py
-├── loader.py
-└── reporting.py
-~~~
-
-loader.py reads and validates CSV. analysis.py performs filtering and aggregation. reporting.py formats and writes the report. errors.py defines DataError. cli.py handles arguments, output and exit codes.
-
-## 5. Data Conversion and Collections
-
-Each valid row becomes a dictionary with strings, date objects and an integer. The program uses a list of records, a set of unique customers, a dictionary of visit totals by kind, and list/set/dictionary comprehensions.
-
-Validation is performed before data reaches the analysis layer.
-
-## 6. Functions, Default Values, *args and **kwargs
-
-The analysis module contains summarize(records, *metrics, reference_date=DEFAULT_REFERENCE_DATE, **labels).
-
-metrics is a tuple, labels is a dictionary, and reference_date has a safe immutable default.
-
-Example:
-
-~~~python
-summarize(
-    records,
-    "visits",
-    reference_date=date(2026, 10, 15),
-    visits="Total visits",
-)
-~~~
-
-## 7. Analysis Algorithm
-
-Fixed reference date:
-
-~~~text
-2026-10-15
-~~~
-
-A membership is active when start <= reference_date <= end.
-
-For active records the program builds the active list, unique-customer set and visits-by-kind dictionary, calculates average visits and finds the leader.
-
-Expected result for the sample:
-
-~~~text
-Active memberships: 5
-Unique customers: 4
-Average visits: 42.40
-Leader: Maria Koval (105 visits)
-ANNUAL: 185
-MONTHLY: 27
-~~~
-
-An empty selection is valid: average is 0.00, leader is none, and grouped totals are empty.
-
-## 8. Error Handling
-
-DataError extends ValueError.
-
-Handled cases include invalid header, empty required value, invalid visits integer, negative visits, invalid ISO dates, end before start, missing value and extra row values.
-
-Integer and date conversion use raise ... from error so the original ValueError remains available as the cause.
-
-CLI exit codes:
-
-~~~text
-0 — success
-2 — expected argument, input or data error
-~~~
-
-No bare except is used.
-
-## 9. File Report
-
-Report path example:
-
-~~~text
-reports/summary.txt
-~~~
-
-The report is written with Path.open, with, encoding="utf-8" and newline="\n". The input CSV is never modified.
-
-Full expected report:
+The external report is also unchanged:
 
 ~~~text
 Reference date: 2026-10-15
@@ -154,144 +79,429 @@ ANNUAL: 185
 MONTHLY: 27
 ~~~
 
-## 10. Testing
+## 3. Model
 
-Python tests are in tests/.
+The base class is Membership.
 
-They cover typed loading, quoted comma, header-only empty input, physical empty file, missing column, missing value, invalid integer with cause, negative visits, invalid date with cause, end before start, inclusive date boundaries, duplicate customer values, aggregation, average, leader, empty selection, *args/**kwargs, unknown metric, deterministic report, UTF-8 writing, CLI success, CLI damaged input, invalid reference date and version output.
+Stored shared state:
 
-The previous Java tests remain in the repository.
+- customer: str;
+- start: date;
+- end: date;
+- visits: int.
 
-## 11. Quality and Packaging
+The kind property is supplied by the concrete subtype.
 
-Development dependencies are declared in pyproject.toml.
+Main invariants:
 
-Windows commands:
+- customer cannot be blank;
+- end cannot be before start;
+- visits must be an integer;
+- visits cannot be negative;
+- zero visits is valid.
+
+The visits attribute is controlled through @property and a setter:
+
+~~~python
+@property
+def visits(self) -> int:
+    return self._visits
+
+@visits.setter
+def visits(self, value: int) -> None:
+    if not isinstance(value, int) or isinstance(value, bool):
+        raise ValueError("Visits must be an integer")
+    if value < 0:
+        raise ValueError("Visits cannot be negative")
+    self._visits = value
+~~~
+
+The setter writes to _visits, not to self.visits, so it does not recursively call itself.
+
+Special methods:
+
+- __str__ — concise reader-facing representation;
+- __repr__ — diagnostic constructor-like representation;
+- __eq__ — equality by concrete subtype and full logical state.
+
+For incompatible types __eq__ returns NotImplemented.
+
+A global __lt__ order is not introduced because the domain has no single universal ordering. Analysis uses explicit key functions where an order is required.
+
+## 4. Dataclass
+
+CompletionSummary is declared as:
+
+~~~python
+@dataclass(frozen=True)
+class CompletionSummary:
+    reference_date: date
+    completed_count: int
+    active_count: int
+    future_count: int
+    next_completion: date | None
+~~~
+
+Its role is to represent the variant-specific summary “membership completion state”.
+
+frozen=True makes the result immutable after creation. Equality is generated by dataclass and compares values field by field.
+
+For the control data at 2026-10-15:
+
+~~~text
+completed_count = 1
+active_count = 5
+future_count = 0
+next_completion = 2026-10-20
+~~~
+
+This internal OOP summary does not modify the external LAB_06 report.
+
+## 5. Subtypes and Protocol
+
+The two required subtypes are:
+
+- MonthlyMembership;
+- AnnualMembership.
+
+Both implement the same operation:
+
+~~~text
+visit_cost()
+~~~
+
+The methodology specifies “visit cost by tariff” but does not define numeric tariff values and simultaneously requires the CSV fields to remain unchanged. Therefore no new tariff column is added. The implementation uses subtype class constants only for demonstrating different polymorphic formulas:
+
+~~~text
+MonthlyMembership.MONTHLY_TARIFF = 600.0
+AnnualMembership.ANNUAL_TARIFF = 6000.0
+AnnualMembership.ANNUAL_BENEFIT = 0.90
+~~~
+
+Monthly formula:
+
+~~~python
+MONTHLY_TARIFF / visits
+~~~
+
+Annual formula:
+
+~~~python
+ANNUAL_TARIFF * ANNUAL_BENEFIT / visits
+~~~
+
+For zero visits both methods return 0.0.
+
+The common structural contract is MembershipProtocol. It declares the shared properties customer, kind, start, end, visits and the visit_cost() method.
+
+Analysis does not branch by concrete subtype. For example, lowest_visit_cost() calls record.visit_cost() through the protocol.
+
+Subtype selection occurs only at the CSV loading boundary, where the kind field determines which object is constructed.
+
+## 6. Modules
+
+LAB_07 package:
+
+~~~text
+src/kzp_lab07/
+├── __init__.py
+├── __main__.py
+├── analysis.py
+├── cli.py
+├── errors.py
+├── loader.py
+├── models.py
+└── reporting.py
+~~~
+
+Responsibilities:
+
+- models.py — Membership, property validation, frozen dataclass, subtypes and Protocol;
+- loader.py — csv.DictReader and CSV → object conversion;
+- analysis.py — calculations over the common object contract;
+- reporting.py — deterministic external report;
+- errors.py — DataError;
+- cli.py — command-line boundary and exit codes;
+- __main__.py — package entry point.
+
+models.py does not read files. loader.py does not format reports. analysis.py does not depend on CLI. Importing modules does not run the program.
+
+## 7. Testing
+
+LAB_07 keeps every LAB_06 test and adds behavior tests for the object model.
+
+New coverage includes:
+
+- setter accepts zero boundary;
+- setter accepts a positive value;
+- setter rejects negative and non-integer values;
+- constructor rejects blank customer;
+- constructor rejects end before start;
+- frozen dataclass equality and immutability;
+- duplicate Membership objects compare equal;
+- different subtypes do not compare equal;
+- __str__ and __repr__;
+- different visit_cost() formulas;
+- zero visits behavior;
+- runtime Protocol compatibility;
+- CSV creates both concrete subtypes;
+- quoted comma is preserved;
+- header-only empty input;
+- physically empty file;
+- unsupported kind with row number;
+- invalid integer with preserved cause;
+- model validation error with row number;
+- wrong header;
+- LAB_06 analysis values are preserved;
+- CompletionSummary values;
+- empty CompletionSummary;
+- protocol-based lowest visit cost;
+- summarize() compatibility;
+- unknown metric error;
+- complete report equality between LAB_06 and LAB_07;
+- UTF-8 report writing;
+- successful CLI;
+- failing CLI;
+- version 1.6.0.
+
+Run:
+
+~~~powershell
+.\.venv\Scripts\python.exe -m pytest
+~~~
+
+The final exact test count is recorded after the green CI run.
+
+## 8. Report Comparison
+
+LAB_07 contains an explicit behavior test that loads the same control CSV through both implementations:
+
+~~~python
+old_report = format_lab06_report(
+    load_lab06_records(input_path),
+    reference_date,
+)
+new_report = format_lab07_report(
+    load_lab07_records(input_path),
+    reference_date,
+)
+
+assert new_report == old_report
+~~~
+
+Control CSV:
+
+~~~text
+data/lab06_input.csv
+~~~
+
+Old dictionary-model result:
+
+~~~text
+Reference date: 2026-10-15
+Active memberships: 5
+Unique customers: 4
+Average visits: 42.40
+Leader: Maria Koval (105 visits)
+Visits by kind:
+ANNUAL: 185
+MONTHLY: 27
+~~~
+
+New object-model result:
+
+~~~text
+Reference date: 2026-10-15
+Active memberships: 5
+Unique customers: 4
+Average visits: 42.40
+Leader: Maria Koval (105 visits)
+Visits by kind:
+ANNUAL: 185
+MONTHLY: 27
+~~~
+
+Therefore the internal representation changed from dictionaries to objects, while the observable report remained compatible.
+
+## 9. Infrastructure
+
+The package configuration is stored in pyproject.toml.
+
+Version:
+
+~~~text
+1.6.0
+~~~
+
+Console scripts:
+
+~~~text
+kzp-lab06
+kzp-lab07
+~~~
+
+Both packages are included in the wheel so the previous Python implementation remains available for compatibility tests.
+
+Windows setup:
+
+~~~powershell
+py -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -e ".[dev]"
+~~~
+
+Verification:
 
 ~~~powershell
 .\.venv\Scripts\python.exe -m pytest
 .\.venv\Scripts\ruff.exe check .
 .\.venv\Scripts\ruff.exe format --check .
-.\.venv\Scripts\python.exe -m build
+.\.venv\Scripts\python.exe -m build --wheel
 ~~~
 
-The wheel is generated in dist/ and is ignored by Git. CI then creates a clean virtual environment, installs the exact wheel with --no-deps and runs the packaged CLI against the variant input.
+CLI:
 
-Python package version: 1.5.0.  
-Final Git tag after verification: v1.5.0.
+~~~powershell
+.\.venv\Scripts\python.exe -m kzp_lab07.cli data\lab06_input.csv reports\summary.txt
+~~~
 
-The Maven project remains 1.4.0 because LAB_06 does not change the Java implementation.
+Version:
 
-## 12. GitHub Actions
+~~~powershell
+.\.venv\Scripts\python.exe -m kzp_lab07.cli --version
+~~~
 
-LAB_06 adds .github/workflows/python-ci.yml.
+Expected:
 
-The CI matrix contains Ubuntu, Windows and macOS. Every job installs the package with dev dependencies, runs pytest, ruff check, ruff format --check, builds a wheel and uploads the wheel artifact.
+~~~text
+kzp-lab07 1.6.0
+~~~
 
-The previous Java workflow is preserved.
+CI uses Python 3.12 on Ubuntu, Windows and macOS. It runs pytest, Ruff, wheel build, installs the exact wheel into a new clean virtual environment and runs the packaged LAB_07 CLI.
 
-Successful LAB_06 branch CI:
+The final CI link, artifacts and tag are recorded after Pull Request verification.
 
-https://github.com/OneeTwo/kzp-rybachuk/actions/runs/39167095377
-
-Result: 23 pytest tests passed; Ruff lint and format checks passed; wheel build and isolated wheel installation/run passed on Ubuntu, Windows and macOS. Wheel artifacts were uploaded for all three operating systems.
-
-## 13. GitHub Issues and Pull Request
+## 10. GitHub Issues and Pull Request
 
 | Issue | Change | Verification |
 |---|---|---|
-| #64 | CSV loader and DataError | loader tests |
-| #65 | Gym analysis | analysis tests |
-| #66 | reporting and CLI | report and CLI tests |
-| #67 | pytest coverage | complete Python suite |
-| #68 | Ruff and wheel packaging | lint, format and build |
-| #69 | Python CI | three operating systems |
-| #70 | documentation | README and REPORT |
+| #72 | Membership object model | model behavior tests |
+| #73 | CompletionSummary dataclass | frozen/equality tests |
+| #74 | subtypes and Protocol | polymorphism/protocol tests |
+| #75 | object loader and analysis | loader/analysis tests |
+| #76 | LAB_07 behavior tests | complete pytest suite |
+| #77 | package 1.6.0 and CI | Ruff, wheel, three OS |
+| #78 | README and REPORT | documentation review |
 
-Branch: LAB_06
+Branch:
 
-Pull Request:
+~~~text
+LAB_07
+~~~
 
-https://github.com/OneeTwo/kzp-rybachuk/pull/71
+The final Pull Request targets main and closes Issues #72–#78.
 
-The Pull Request targets main and closes Issues #64–#70.
-
-## 14. Academic Integrity
+## 11. Academic Integrity
 
 ChatGPT was used as an AI assistant.
 
-Roles used: Manager, Developer, Validator, DevOps, Documenter and Reviewer.
+Roles:
 
-Accepted recommendations include using csv.DictReader, Path, explicit UTF-8, DataError, raise ... from, a fixed reference date, deterministic ordering, pytest, Ruff, wheel packaging and a separate Python CI workflow while preserving Java infrastructure.
+- Manager — split the object model, dataclass, subtypes, tests, infrastructure and documentation into Issues;
+- Developer — implementation suggestions for individual modules;
+- Validator — setter boundaries, equality, subtype behavior, malformed CSV and compatibility tests;
+- DevOps — virtual environment, pytest, Ruff, wheel and GitHub Actions;
+- Documenter — README, REPORT and docstrings;
+- Reviewer — module boundaries and absence of subtype branching in analysis.
 
-The implementation and generated suggestions must be reviewed, run and understood before submission.
+Accepted recommendations:
 
-## 15. Control Questions
+- preserve LAB_06 rather than overwrite it;
+- add a separate kzp_lab07 package;
+- keep the CSV contract and report unchanged;
+- validate mutable visits through @property;
+- use frozen CompletionSummary for the variant summary;
+- place subtype dispatch only in loader;
+- use Protocol for the analysis contract;
+- keep deterministic key-based ordering;
+- compare the complete LAB_06 and LAB_07 report strings;
+- verify the built wheel in a clean environment.
 
-1. What is pyproject.toml used for?  
-It defines the Python package, Python version, dependencies, console script, pytest and Ruff configuration.
+Source gap handled explicitly: the methodology specifies visit_cost() “by tariff” but does not give numeric tariff values. Numeric tariff constants were therefore defined inside the two subtypes without changing the CSV format or external report.
 
-2. Why create a virtual environment?  
-It isolates project dependencies and makes the setup reproducible.
+An initial automated test expectation for the lowest visit cost incorrectly expected Anna Melnyk. CI showed that the implemented formulas correctly select Taras, Strong. The test expectation was corrected after checking the actual formula values.
 
-3. Why use newline="" for CSV?  
-It lets the csv module handle CSV line endings correctly.
+My contribution includes local execution, review of object behavior, verification of tests and report compatibility, Git operations, CI review, merge and release tagging.
 
-4. What does DictReader return before conversion?  
-CSV values are strings; missing values may be None.
+## 12. Answers to Control Questions
 
-5. Why is split(",") unsuitable?  
-A comma can occur inside a quoted field and must not be treated as a separator.
+1. **How does a class differ from an instance?**  
+A class describes structure and behavior; an instance is one concrete object with its own state.
 
-6. How do list, dictionary and set differ?  
-A list stores ordered items and duplicates, a dictionary maps keys to values, and a set stores unique values.
+2. **What does __init__ do and what is self?**  
+__init__ initializes a newly created instance. self is the explicit reference to that current instance inside instance methods.
 
-7. When is comprehension useful?  
-For a clear one-step filtering, transformation or collection construction.
+3. **Why use @property?**  
+It exposes field-like syntax while allowing validation or calculated behavior during access and assignment.
 
-8. What are *args and **kwargs?  
-*args collects extra positional arguments into a tuple and **kwargs collects named arguments into a dictionary.
+4. **Why does a setter assign to an internal field?**  
+Assigning to the property itself would call the setter again and recurse. Writing to _visits stores the checked value directly.
 
-9. Why avoid a mutable default value?  
-The same mutable object can be reused between calls and retain state.
+5. **What behavior does @dataclass add automatically?**  
+It can generate __init__, __repr__, __eq__ and related data-class behavior from declared fields.
 
-10. What does raise ... from error do?  
-It preserves the original exception as the cause of a higher-level exception.
+6. **Why use frozen=True?**  
+It makes a result object immutable after construction and clearly expresses that it is a value, not changing state.
 
-11. Why separate loading, analysis and reporting?  
-Each module has one responsibility and can be tested independently.
+7. **How do __str__ and __repr__ differ?**  
+__str__ is reader-facing; __repr__ is diagnostic and aimed at developers.
 
-12. What does with guarantee for a file?  
-The file is closed when the context exits, including after an exception.
+8. **How should __eq__ handle an incompatible type?**  
+It should return NotImplemented so Python can try the symmetric operation or resolve the comparison correctly.
 
-13. Why deterministic report ordering?  
-The same input should generate the same report on every run and OS.
+9. **When is sorted(key=...) better than __lt__?**  
+When ordering is contextual rather than a universal property of the entity.
 
-14. Which empty CSV cases are tested?  
-A file without a header is rejected; a header-only file produces an empty record list.
+10. **What does super() do?**  
+It delegates to the next implementation in the method resolution order, commonly to initialize shared base-class state.
 
-15. What is a behavior test?  
-It verifies externally observable results instead of internal variable names or exact implementation details.
+11. **What is MRO?**  
+Method Resolution Order is the order Python follows when resolving attributes and methods in inheritance hierarchies.
 
-16. What does pytest discover?  
-Test modules and test functions/classes that follow its discovery rules; this project points pytest to tests/.
+12. **What is duck typing?**  
+Code depends on what an object can do rather than requiring one specific concrete class.
 
-17. What does Ruff do?  
-ruff check performs linting and ruff format --check verifies formatting.
+13. **What problem does Protocol solve?**  
+It documents and type-checks a structural contract without forcing every implementation to inherit from one concrete base.
 
-18. Which CLI codes are used?  
-0 for success and 2 for expected argument, input or data errors.
+14. **Why should analysis avoid checking every subtype?**  
+Subtype-specific behavior belongs to the subtype. Analysis should call the shared operation so new subtypes do not require branch changes.
 
-19. Why run tests, Ruff and wheel build in CI?  
-They independently verify behavior, code quality and distributable packaging.
+15. **Where should dictionary-to-object conversion happen?**  
+At the loader boundary, so analysis receives validated objects rather than raw CSV dictionaries.
 
-20. What must REPORT contain?  
-CSV format, reference date, module structure, analysis, errors, full report text, tests, quality commands, wheel, CI, Issues/PR, version/tag and academic-integrity information.
+16. **Why should modules not start CLI code during import?**  
+Imports are used by tests and other modules; running the application as a side effect would make reuse and testing unreliable.
 
-## 16. Conclusion
+17. **Which object properties are tested?**  
+Setter validation, invariants, equality, frozen dataclass behavior, string representations, subtype formulas and protocol compatibility.
 
-LAB_06 starts the Python stage while retaining the previous Java project history and tests.
+18. **Why are pytest, Ruff and wheel needed?**  
+pytest verifies behavior, Ruff verifies code quality and formatting, and wheel proves the package can be distributed and installed.
 
-The Python package reads variant-20 Gym CSV data with csv.DictReader, converts fields to typed values, filters active memberships, aggregates visits by kind, collects unique customers, calculates average visits and selects the leader.
+19. **Which edge cases are included?**  
+Zero visits, negative visits, non-integer values, blank customer, invalid dates, empty input, wrong header, unknown kind, duplicate equality and failing CLI input.
 
-The application includes separate loader, analysis, reporting, error and CLI modules, pytest, Ruff, wheel packaging, version 1.5.0 and a three-OS Python CI workflow.
+20. **What must be declared in REPORT?**  
+Before/after design, object model, dataclass, subtypes/protocol, modules, tests, report compatibility, infrastructure, Issues/PR, AI use, control answers and conclusions, plus green CI, artifact and tag for the full cycle.
+
+## 13. Conclusions
+
+LAB_07 changes the internal Python model from dictionaries to objects while preserving the CSV contract and observable LAB_06 report.
+
+Membership centralizes common state and validation. visits is protected by a property setter. MonthlyMembership and AnnualMembership provide subtype-specific visit_cost() behavior, while MembershipProtocol lets analysis use that behavior without concrete-type branches.
+
+CompletionSummary provides the required immutable completion-oriented summary. The loader converts CSV rows directly into objects and preserves row-numbered DataError context.
+
+The previous LAB_06 package and tests remain in place, allowing an explicit automated comparison between the dictionary and object models.
+
+The final full-cycle result includes pytest, Ruff, wheel packaging, clean wheel verification, three-OS GitHub Actions, documentation, Issues, Pull Request, version 1.6.0 and release tag v1.6.0 after merge.
