@@ -404,7 +404,11 @@ Branch:
 LAB_07
 ~~~
 
-The final Pull Request targets main and closes Issues #72–#78.
+Pull Request #79:
+
+https://github.com/OneeTwo/kzp-rybachuk/pull/79
+
+The Pull Request targets main and closes Issues #72–#78.
 
 ## 11. Academic Integrity
 
