@@ -1,1191 +1,289 @@
-# Laboratory Work No. 5 Report
+# Laboratory Work No. 6 Report
 
 ## 1. Topic, Number and Variant
 
-**Topic:** Parameterized Storage, Exceptions and CSV Export in a Java Project  
-**Laboratory Work:** No. 5  
+**Topic:** Python Data Processing  
+**Laboratory Work:** No. 6  
 **Variant:** 20 — Gym  
-**Operating System:** Windows 11
+**Operating System:** Windows 11  
+**Python:** 3.11+; CI uses Python 3.12  
+**Version:** 1.5.0
 
 **Repository:**  
 https://github.com/OneeTwo/kzp-rybachuk
 
-**Branch:** `LAB_05`  
-**Version:** `1.4.0`
+**Branch:**  
+https://github.com/OneeTwo/kzp-rybachuk/tree/LAB_06
 
-The subject area remains the same as in the previous laboratory works: processing gym membership information.
-
-For variant 20 the LAB_05 persistence model is:
-
-```text
-MembershipRecord:
-customer   : String
-kind       : MembershipKind
-startDate  : LocalDate
-endDate    : LocalDate
-visits     : int
-```
-
-CSV column names:
-
-```text
-клієнт
-тип
-початок
-кінець
-відвідування
-```
-
-Round-trip key:
-
-```text
-customer + startDate
-```
+LAB_06 adds a Python stage without deleting the Java sources, Java tests, Maven Wrapper or previous Java CI.
 
 ## 2. Objective
 
-The objective of LAB_05 was to complete data persistence in the existing Java project without creating a new repository or changing the subject area.
+The goal is to create a modular Python application that reads Gym CSV data, converts fields to typed values, analyses them with lists, dictionaries, sets and comprehensions, produces a deterministic report, and writes it to a UTF-8 text file.
 
-The following functionality was added:
+The complete solution also keeps pytest, Ruff, wheel packaging, versioning, GitHub Issues, Pull Request and cross-platform CI.
 
-- generic `Repository<T>`;
-- custom checked `DataStorageException`;
-- runtime `@CsvColumn` annotation;
-- reflection-based generic CSV exporter;
-- deterministic CSV column order;
-- CSV escaping;
-- UTF-8 reading and writing;
-- CSV document parser;
-- domain-specific `MembershipRecord` restoration;
-- object → CSV → object round-trip;
-- positive, boundary and negative tests.
+## 3. CSV Format
 
-The previous polymorphic model, Stream API queries, Maven configuration and external report output were preserved.
+Header:
 
-## 3. State Before and After LAB_05
+~~~text
+customer,kind,start,end,visits
+~~~
 
-### Before LAB_05
+Types after loading:
 
-The application already contained:
+~~~text
+customer -> str
+kind     -> str
+start    -> datetime.date
+end      -> datetime.date
+visits   -> int
+~~~
 
-```text
-Membership
-├── MonthlyMembership
-└── AnnualMembership
-```
+Input file: data/lab06_input.csv
 
-It also contained:
+Example escaped row:
 
-```text
-MembershipKind
-MembershipQueries
-```
+~~~text
+"Taras, Strong",MONTHLY,2026-10-05,2026-11-05,15
+~~~
 
-and Stream API processing introduced in LAB_04.
+A physical file without a header is rejected with DataError. A header-only file is valid and produces an empty list. CSV is read with csv.DictReader, UTF-8 and newline="".
 
-Objects read from the original input file were stored directly in an in-memory list.
+## 4. Module Structure
 
-There was no universal persistence layer for:
+~~~text
+src/kzp_lab06/
+├── __init__.py
+├── __main__.py
+├── analysis.py
+├── cli.py
+├── errors.py
+├── loader.py
+└── reporting.py
+~~~
 
-```text
-Java object -> CSV -> Java object
-```
+loader.py reads and validates CSV. analysis.py performs filtering and aggregation. reporting.py formats and writes the report. errors.py defines DataError. cli.py handles arguments, output and exit codes.
 
-### After LAB_05
+## 5. Data Conversion and Collections
 
-Direct collection storage in `Main` was replaced by:
+Each valid row becomes a dictionary with strings, date objects and an integer. The program uses a list of records, a set of unique customers, a dictionary of visit totals by kind, and list/set/dictionary comprehensions.
 
-```java
-Repository<Membership>
-```
+Validation is performed before data reaches the analysis layer.
 
-LAB_05 additionally introduced:
+## 6. Functions, Default Values, *args and **kwargs
 
-```text
-Repository<T>
-DataStorageException
-CsvColumn
-CsvExporter
-CsvParser
-MembershipRecord
-MembershipCsvReader
-Lab05RoundTrip
-```
+The analysis module contains summarize(records, *metrics, reference_date=DEFAULT_REFERENCE_DATE, **labels).
 
-A separate flat `MembershipRecord` model is used for persistence while the previous polymorphic membership hierarchy remains unchanged.
+metrics is a tuple, labels is a dictionary, and reference_date has a safe immutable default.
 
-The application can now perform:
+Example:
 
-```text
-MembershipRecord objects
-        ↓
-Repository<MembershipRecord>
-        ↓
-CsvExporter
-        ↓
-UTF-8 CSV
-        ↓
-CsvParser
-        ↓
-MembershipCsvReader
-        ↓
-restored MembershipRecord objects
-        ↓
-equals()
-```
-
-## 4. Repository<T>
-
-The generic repository is declared as:
-
-```java
-public final class Repository<T>
-```
-
-The type parameter `T` determines the type of objects that can be stored.
-
-For example:
-
-```java
-Repository<Membership> repository =
-    new Repository<>();
-```
-
-accepts `Membership` objects.
-
-The LAB_05 round-trip demonstration uses:
-
-```java
-Repository<MembershipRecord> repository =
-    new Repository<>();
-```
-
-### add
-
-```java
-public void add(T item)
-```
-
-adds a non-null object to the repository.
-
-### all
-
-```java
-public List<T> all()
-```
-
-returns:
-
-```java
-List.copyOf(items)
-```
-
-Therefore, the caller receives an immutable snapshot rather than access to the internal mutable collection.
-
-A snapshot created before another call to `add()` also remains unchanged.
-
-### find
-
-```java
-public List<T> find(
-    Predicate<? super T> condition
+~~~python
+summarize(
+    records,
+    "visits",
+    reference_date=date(2026, 10, 15),
+    visits="Total visits",
 )
-```
+~~~
 
-uses the predicate to select matching records:
+## 7. Analysis Algorithm
 
-```java
-return items.stream()
-    .filter(condition)
-    .toList();
-```
+Fixed reference date:
 
-`Predicate<? super T>` allows a predicate that accepts `T` or one of its supertypes.
+~~~text
+2026-10-15
+~~~
 
-Raw types are not used.
+A membership is active when start <= reference_date <= end.
 
-## 5. Data Model
+For active records the program builds the active list, unique-customer set and visits-by-kind dictionary, calculates average visits and finds the leader.
 
-LAB_05 introduces the flat persistence class:
+Expected result for the sample:
 
-```java
-MembershipRecord
-```
+~~~text
+Active memberships: 5
+Unique customers: 4
+Average visits: 42.40
+Leader: Maria Koval (105 visits)
+ANNUAL: 185
+MONTHLY: 27
+~~~
 
-Fields:
+An empty selection is valid: average is 0.00, leader is none, and grouped totals are empty.
 
-| Field | Type | Meaning |
-|---|---|---|
-| `customer` | `String` | customer name |
-| `kind` | `MembershipKind` | membership type |
-| `startDate` | `LocalDate` | membership start |
-| `endDate` | `LocalDate` | membership end |
-| `visits` | `int` | visit count |
+## 8. Error Handling
 
-### Invariants
+DataError extends ValueError.
 
-The implemented validation rules are:
+Handled cases include invalid header, empty required value, invalid visits integer, negative visits, invalid ISO dates, end before start, missing value and extra row values.
 
-```text
-customer != null and not blank
-kind != null
-startDate != null
-endDate != null
-endDate >= startDate
-visits >= 0
-```
+Integer and date conversion use raise ... from error so the original ValueError remains available as the cause.
 
-An invalid model value results in:
+CLI exit codes:
 
-```java
-IllegalArgumentException
-```
+~~~text
+0 — success
+2 — expected argument, input or data error
+~~~
 
-or a null validation exception before the object is created.
+No bare except is used.
 
-### Equality
+## 9. File Report
 
-`equals()` compares:
+Report path example:
 
-```text
-customer
-kind
-startDate
-endDate
-visits
-```
+~~~text
+reports/summary.txt
+~~~
 
-`hashCode()` uses the same fields.
+The report is written with Path.open, with, encoding="utf-8" and newline="\n". The input CSV is never modified.
 
-This is necessary because the round-trip test compares the complete original and restored object lists:
+Full expected report:
 
-```java
-assertEquals(original, restored);
-```
+~~~text
+Reference date: 2026-10-15
+Active memberships: 5
+Unique customers: 4
+Average visits: 42.40
+Leader: Maria Koval (105 visits)
+Visits by kind:
+ANNUAL: 185
+MONTHLY: 27
+~~~
 
-## 6. @CsvColumn
+## 10. Testing
 
-LAB_05 defines:
+Python tests are in tests/.
 
-```java
-@Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.FIELD)
-public @interface CsvColumn {
-    String value();
-}
-```
+They cover typed loading, quoted comma, header-only empty input, physical empty file, missing column, missing value, invalid integer with cause, negative visits, invalid date with cause, end before start, inclusive date boundaries, duplicate customer values, aggregation, average, leader, empty selection, *args/**kwargs, unknown metric, deterministic report, UTF-8 writing, CLI success, CLI damaged input, invalid reference date and version output.
 
-`RetentionPolicy.RUNTIME` is necessary because `CsvExporter` reads the annotation using reflection while the program is running.
+The previous Java tests remain in the repository.
 
-`ElementType.FIELD` restricts its use to fields.
+## 11. Quality and Packaging
 
-`MembershipRecord` contains:
+Development dependencies are declared in pyproject.toml.
 
-```java
-@CsvColumn("клієнт")
-private final String customer;
+Windows commands:
 
-@CsvColumn("тип")
-private final MembershipKind kind;
+~~~powershell
+.\.venv\Scripts\python.exe -m pytest
+.\.venv\Scripts\ruff.exe check .
+.\.venv\Scripts\ruff.exe format --check .
+.\.venv\Scripts\python.exe -m build
+~~~
 
-@CsvColumn("початок")
-private final LocalDate startDate;
+The wheel is generated in dist/ and is ignored by Git.
 
-@CsvColumn("кінець")
-private final LocalDate endDate;
+Python package version: 1.5.0.  
+Final Git tag after verification: v1.5.0.
 
-@CsvColumn("відвідування")
-private final int visits;
-```
+The Maven project remains 1.4.0 because LAB_06 does not change the Java implementation.
 
-The annotation value defines the text written to the CSV header.
+## 12. GitHub Actions
 
-### Deterministic Order
+LAB_06 adds .github/workflows/python-ci.yml.
 
-The exporter sorts fields by their Java names.
+The CI matrix contains Ubuntu, Windows and macOS. Every job installs the package with dev dependencies, runs pytest, ruff check, ruff format --check, builds a wheel and uploads the wheel artifact.
 
-For `MembershipRecord`, the resulting order is:
+The previous Java workflow is preserved.
 
-```text
-customer
-endDate
-kind
-startDate
-visits
-```
-
-Therefore, the actual CSV header is:
-
-```text
-клієнт,кінець,тип,початок,відвідування
-```
-
-## 7. Reflection-Based Exporter
-
-The exporter is implemented in:
-
-```text
-CsvExporter
-```
-
-Its public method is generic:
-
-```java
-public static <T> void write(
-    Path path,
-    Class<T> type,
-    List<? extends T> records
-)
-```
-
-The exporter does not contain conditions such as:
-
-```java
-if (type == MembershipRecord.class)
-```
-
-and does not depend on:
-
-```text
-MonthlyMembership
-AnnualMembership
-MembershipRecord
-```
-
-### Reflection Algorithm
-
-The exporter:
-
-1. receives the class through `Class<T>`;
-2. obtains declared fields;
-3. selects fields containing `@CsvColumn`;
-4. sorts them by Java field name;
-5. verifies reflective access;
-6. obtains CSV header names from the annotations;
-7. obtains each field value using `Field.get`;
-8. escapes CSV-special characters;
-9. creates the CSV document;
-10. writes it using UTF-8.
-
-Reflection therefore allows the exporter to operate on another flat class containing annotated fields without changing the exporter implementation.
-
-### Field Access
-
-The implementation calls:
-
-```java
-field.trySetAccessible()
-```
-
-If access cannot be provided, export does not silently continue.
-
-Instead:
-
-```java
-DataStorageException
-```
-
-is thrown.
-
-## 8. CSV Format
-
-The file uses:
-
-```text
-UTF-8
-```
-
-through:
-
-```java
-StandardCharsets.UTF_8
-```
-
-### Actual Header
-
-```text
-клієнт,кінець,тип,початок,відвідування
-```
-
-### Normal Record Example
-
-```text
-Ivan Petrenko,2026-10-31,MONTHLY,2026-10-01,12
-```
-
-### Escaped Record
-
-One test record intentionally contains:
-
-```text
-Taras, "Strong"
-Client
-```
-
-The exported CSV representation is:
-
-```text
-"Taras, ""Strong""
-Client",2026-11-05,MONTHLY,2026-10-05,15
-```
-
-The comma is protected by the outer quotes.
-
-The original double quotes are doubled:
-
-```text
-"
-```
-
-becomes:
-
-```text
-""
-```
-
-The line break remains inside the quoted field and therefore remains part of the customer value.
-
-### Complete Demonstration CSV
-
-The produced file logically contains:
-
-```text
-клієнт,кінець,тип,початок,відвідування
-Ivan Petrenko,2026-10-31,MONTHLY,2026-10-01,12
-Maria Koval,2026-12-31,ANNUAL,2026-01-01,105
-Oleh Bondar,2026-09-30,MONTHLY,2026-09-01,8
-Anna Melnyk,2027-01-31,ANNUAL,2026-02-01,80
-"Taras, ""Strong""
-Client",2026-11-05,MONTHLY,2026-10-05,15
-```
-
-There are five data records, but the multiline record occupies two physical text lines.
-
-Therefore:
-
-```text
-logical data records = 5
-physical CSV lines = 7
-```
-
-including the header.
-
-## 9. Import and Round-Trip
-
-Round-trip is the sequence:
-
-```text
-object
-→ CSV
-→ parser
-→ object
-```
-
-The exporter is generic, but conversion from text to:
-
-```text
-LocalDate
-MembershipKind
-int
-```
-
-is domain-specific.
-
-For this reason `MembershipRecord` implements:
-
-```java
-fromCsvFields(...)
-```
-
-### Import Field Order
-
-Because the exporter uses alphabetical Java field order, the parser restores:
-
-```text
-0 -> customer
-1 -> endDate
-2 -> kind
-3 -> startDate
-4 -> visits
-```
-
-Conversions:
-
-```java
-LocalDate.parse(...)
-MembershipKind.valueOf(...)
-Integer.parseInt(...)
-```
-
-### Reading the File
-
-`MembershipCsvReader` uses:
-
-```java
-Files.readString(
-    path,
-    StandardCharsets.UTF_8
-)
-```
-
-The complete document is then passed to:
-
-```java
-CsvParser.parseDocument(text)
-```
-
-This is important because a physical line break may appear inside a quoted CSV field.
-
-### Actual Round-Trip Result
-
-The command:
-
-```powershell
-java -jar target\lab01-1.4.0.jar --csv-demo
-```
-
-produced:
-
-```text
-CSV file: out\memberships.csv
-Original records: 5
-Restored records: 5
-Round-trip equal: true
-```
-
-Therefore:
-
-```text
-original.size() = 5
-restored.size() = 5
-original.equals(restored) = true
-```
-
-The values of the records, including the enum, dates, visit count and escaped customer string, survived the complete round-trip.
-
-The variant round-trip key is:
-
-```text
-customer + startDate
-```
-
-## 10. Error Handling
-
-LAB_05 distinguishes model, CSV format, CSV value, filesystem and reflection errors.
-
-| Error type | Example | Result | Cause |
-|---|---|---|---|
-| Model validation | negative visits | `IllegalArgumentException` | model error itself |
-| Field count | fewer than 5 fields | `DataStorageException` | none required |
-| Number conversion | `visits = abc` | `DataStorageException` | `NumberFormatException` |
-| Enum conversion | `kind = UNKNOWN` | `DataStorageException` | `IllegalArgumentException` |
-| CSV syntax | unclosed quotes | `DataStorageException` | parser error |
-| CSV header | unexpected header | `DataStorageException` | none required |
-| File read | missing file | `DataStorageException` | `IOException` |
-| File write | filesystem error | `DataStorageException` | `IOException` |
-| Reflection | inaccessible field | `DataStorageException` | reflective/runtime cause where available |
-| No annotated fields | exporting unsupported class | `DataStorageException` | none required |
-
-Example conversion handling:
-
-```java
-try {
-    int visits =
-        Integer.parseInt(fields.get(4));
-} catch (IllegalArgumentException exception) {
-    throw new DataStorageException(
-        "Invalid membership CSV values",
-        exception
-    );
-}
-```
-
-The original cause remains available through:
-
-```java
-exception.getCause()
-```
-
-Errors are not replaced by an empty collection.
-
-## 11. Testing
-
-All tests from the previous laboratory works remain in the project.
-
-LAB_05 adds tests for:
-
-```text
-Repository<T>
-MembershipRecord
-CsvExporter
-CsvParser
-Membership round-trip
-```
-
-### Repository Tests
-
-Checked:
-
-- adding values;
-- retrieving stored records;
-- immutable `all()` result;
-- snapshot independence;
-- predicate search;
-- null item rejection;
-- null predicate rejection.
-
-### Annotation and Model Tests
-
-Checked:
-
-- valid `MembershipRecord`;
-- field values;
-- equality;
-- hash code;
-- negative visits;
-- invalid date interval;
-- presence of `@CsvColumn`;
-- correct annotation values.
-
-### Export Tests
-
-Checked:
-
-- deterministic header;
-- normal record;
-- comma escaping;
-- quote escaping;
-- multiline field;
-- empty record list;
-- class without CSV columns;
-- UTF-8 output.
-
-### Parser Tests
-
-Checked:
-
-- normal CSV;
-- quoted comma;
-- doubled quote;
-- multiline quoted field;
-- CRLF;
-- empty CSV;
-- unclosed quote;
-- invalid characters after a closing quote;
-- multiple records passed to the single-record method.
-
-### Round-Trip Tests
-
-Checked:
-
-```text
-5 original records
-5 restored records
-equal lists
-```
-
-The test data include:
-
-```text
-comma
-quotes
-line break
-MONTHLY enum
-ANNUAL enum
-LocalDate values
-integer visits
-```
-
-### Negative Tests
-
-Checked:
-
-```text
-invalid field count
-invalid number
-invalid enum
-missing file
-```
-
-`getCause()` is explicitly verified for conversion and filesystem failures.
-
-### Empty Input
-
-Two empty states are tested.
-
-An exporter called with:
-
-```java
-List.of()
-```
-
-still creates a header because `MembershipRecord.class` is supplied separately.
-
-An entirely empty CSV document returns:
-
-```text
-empty list
-```
-
-### Local Verification
-
-The following commands were executed successfully:
-
-```powershell
-.\mvnw.cmd test
-.\mvnw.cmd verify
-.\mvnw.cmd package
-```
-
-The executable JAR also ran successfully.
-
-## 12. Infrastructure
-
-The project uses:
-
-```text
-Java 21
-Maven
-Maven Wrapper
-JUnit 5
-SpotBugs
-Maven Shade Plugin
-GitHub Actions
-```
-
-Current version:
-
-```text
-1.4.0
-```
-
-### Test
-
-```powershell
-.\mvnw.cmd test
-```
-
-### Static Analysis
-
-```powershell
-.\mvnw.cmd verify
-```
-
-This executes the tests and SpotBugs verification.
-
-### Package
-
-```powershell
-.\mvnw.cmd package
-```
-
-Executable JAR:
-
-```text
-target/lab01-1.4.0.jar
-```
-
-### Normal Application
-
-```powershell
-java -jar target\lab01-1.4.0.jar
-```
-
-### Version
-
-```powershell
-java -jar target\lab01-1.4.0.jar --version
-```
-
-Actual result:
-
-```text
-lab01 1.4.0
-```
-
-### CSV Demonstration
-
-```powershell
-java -jar target\lab01-1.4.0.jar --csv-demo
-```
-
-Actual result:
-
-```text
-CSV file: out\memberships.csv
-Original records: 5
-Restored records: 5
-Round-trip equal: true
-```
-
-### Continuous Integration
-
-GitHub Actions is configured for:
-
-```text
-ubuntu-latest
-windows-latest
-macos-latest
-```
-
-The workflow uploads:
-
-```text
-target/lab01-1.4.0.jar
-```
-
-using an artifact name beginning with:
-
-```text
-lab05-
-```
-
-The final remote CI result will be recorded after the LAB_05 Pull Request is created and all three matrix jobs finish.
-
-**Git tag:** `v1.4.0` will be created on `main` after the final Pull Request is merged.
+The final CI and artifact links are added after the Pull Request is created.
 
 ## 13. GitHub Issues and Pull Request
 
-LAB_05 was implemented in:
-
-```text
-LAB_05
-```
-
-The following Issues were created:
-
 | Issue | Change | Verification |
 |---|---|---|
-| #52 | Implement LAB_05 generic repository | `RepositoryTest` |
-| #53 | Implement LAB_05 CSV annotation | reflection/annotation tests |
-| #54 | Implement LAB_05 CSV exporter | header and escaping tests |
-| #55 | Implement LAB_05 CSV parser | parser and multiline tests |
-| #56 | Implement LAB_05 storage exceptions | cause/error tests |
-| #57 | Implement LAB_05 MembershipRecord round-trip | round-trip test |
-| #58 | Add LAB_05 tests | `test` and `verify` |
-| #59 | Update LAB_05 documentation | README and REPORT |
-| #60 | Verify LAB_05 CI and release | JAR, CI, version and tag |
+| #64 | CSV loader and DataError | loader tests |
+| #65 | Gym analysis | analysis tests |
+| #66 | reporting and CLI | report and CLI tests |
+| #67 | pytest coverage | complete Python suite |
+| #68 | Ruff and wheel packaging | lint, format and build |
+| #69 | Python CI | three operating systems |
+| #70 | documentation | README and REPORT |
 
-The final Pull Request will merge:
+Branch: LAB_06
 
-```text
-LAB_05 -> main
-```
+The final Pull Request targets main and closes Issues #64–#70.
 
-and will contain:
+## 14. Academic Integrity
 
-```text
-Closes #52
-Closes #53
-Closes #54
-Closes #55
-Closes #56
-Closes #57
-Closes #58
-Closes #59
-Closes #60
-```
+ChatGPT was used as an AI assistant.
 
-The Pull Request will also include:
+Roles used: Manager, Developer, Validator, DevOps, Documenter and Reviewer.
 
-- CSV example;
-- local verification result;
-- round-trip result;
-- error handling summary;
-- CI result.
-
-## 14. Comparison with the Previous State
-
-LAB_05 does not replace the existing subject domain.
-
-The previous membership hierarchy remains available:
+Accepted recommendations include using csv.DictReader, Path, explicit UTF-8, DataError, raise ... from, a fixed reference date, deterministic ordering, pytest, Ruff, wheel packaging and a separate Python CI workflow while preserving Java infrastructure.
 
-```text
-Membership
-├── MonthlyMembership
-└── AnnualMembership
-```
-
-The Stream API query layer from LAB_04 also remains.
-
-The primary storage change in `Main` is:
-
-### Before
-
-```java
-List<Membership> memberships =
-    new ArrayList<>();
-```
-
-### After
-
-```java
-Repository<Membership> repository =
-    new Repository<>();
-```
-
-and after parsing:
-
-```java
-List<Membership> memberships =
-    repository.all();
-```
-
-The external output before LAB_05 was:
-
-```text
-Line 4 skipped: invalid numeric value
-Line 5 skipped: invalid number format
-Valid records: 3
-Average visits: 47.33
-Total revenue: 8700.00
-Longest membership: 12 months
-```
-
-After introducing `Repository<T>` and CSV functionality, the result remains:
-
-```text
-Line 4 skipped: invalid numeric value
-Line 5 skipped: invalid number format
-Valid records: 3
-Average visits: 47.33
-Total revenue: 8700.00
-Longest membership: 12 months
-```
+The implementation and generated suggestions must be reviewed, run and understood before submission.
 
-Therefore, LAB_05 added persistence without losing the previous calculations, model or external behavior.
-
-## 15. Academic Integrity
-
-ChatGPT was used as a generative AI assistant during LAB_05.
+## 15. Control Questions
 
-### Tool
+1. What is pyproject.toml used for?  
+It defines the Python package, Python version, dependencies, console script, pytest and Ruff configuration.
 
-```text
-ChatGPT
-```
+2. Why create a virtual environment?  
+It isolates project dependencies and makes the setup reproducible.
 
-### Roles
+3. Why use newline="" for CSV?  
+It lets the csv module handle CSV line endings correctly.
 
-The AI assistant was used as:
+4. What does DictReader return before conversion?  
+CSV values are strings; missing values may be None.
 
-- requirements consultant;
-- component design assistant;
-- test-case reviewer;
-- CSV validation assistant;
-- DevOps assistant;
-- documentation assistant;
-- Git/GitHub workflow assistant.
+5. Why is split(",") unsuitable?  
+A comma can occur inside a quoted field and must not be treated as a separator.
 
-### Example Requests
+6. How do list, dictionary and set differ?  
+A list stores ordered items and duplicates, a dictionary maps keys to values, and a set stores unique values.
 
-Examples of requests made to the assistant:
+7. When is comprehension useful?  
+For a clear one-step filtering, transformation or collection construction.
 
-```text
-Analyse LAB_05 for variant 20.
-Create Repository<T>.
-Implement @CsvColumn.
-Implement a reflection-based CsvExporter.
-Add proper CSV escaping.
-Implement a CSV parser without split(",").
-Create MembershipRecord for variant 20.
-Implement object -> CSV -> object round-trip.
-Add tests for invalid numbers, enum and file errors.
-Prepare README and REPORT.
-```
+8. What are *args and **kwargs?  
+*args collects extra positional arguments into a tuple and **kwargs collects named arguments into a dictionary.
 
-### Accepted Suggestions
+9. Why avoid a mutable default value?  
+The same mutable object can be reused between calls and retain state.
 
-Accepted suggestions included:
+10. What does raise ... from error do?  
+It preserves the original exception as the cause of a higher-level exception.
 
-- using a generic `Repository<T>`;
-- returning `List.copyOf()` from `all()`;
-- using `Predicate<? super T>`;
-- implementing a checked `DataStorageException`;
-- preserving the original exception as `cause`;
-- using `@Retention(RUNTIME)`;
-- using `@Target(FIELD)`;
-- sorting reflected fields by Java field name;
-- using a domain-independent exporter;
-- quoting CSV fields containing commas, quotes or line breaks;
-- doubling embedded quotes;
-- parsing the complete CSV document;
-- keeping import conversion domain-specific;
-- testing round-trip equality.
+11. Why separate loading, analysis and reporting?  
+Each module has one responsibility and can be tested independently.
 
-### Adapted Decisions
+12. What does with guarantee for a file?  
+The file is closed when the context exits, including after an exception.
 
-The existing LAB_03/LAB_04 polymorphic model uses:
+13. Why deterministic report ordering?  
+The same input should generate the same report on every run and OS.
 
-```text
-client
-plan
-months
-visits
-price
-```
+14. Which empty CSV cases are tested?  
+A file without a header is rejected; a header-only file produces an empty record list.
 
-while LAB_05 variant 20 specifies:
+15. What is a behavior test?  
+It verifies externally observable results instead of internal variable names or exact implementation details.
 
-```text
-customer
-kind
-startDate
-endDate
-visits
-```
+16. What does pytest discover?  
+Test modules and test functions/classes that follow its discovery rules; this project points pytest to tests/.
 
-The previous model was not removed or rewritten.
+17. What does Ruff do?  
+ruff check performs linting and ruff format --check verifies formatting.
 
-Instead, a separate flat:
+18. Which CLI codes are used?  
+0 for success and 2 for expected argument, input or data errors.
 
-```text
-MembershipRecord
-```
+19. Why run tests, Ruff and wheel build in CI?  
+They independently verify behavior, code quality and distributable packaging.
 
-was introduced for persistence.
+20. What must REPORT contain?  
+CSV format, reference date, module structure, analysis, errors, full report text, tests, quality commands, wheel, CI, Issues/PR, version/tag and academic-integrity information.
 
-This preserves the previous product while also implementing the exact persistence fields required for LAB_05.
+## 16. Conclusion
 
-### Corrected Problems
+LAB_06 starts the Python stage while retaining the previous Java project history and tests.
 
-During implementation, special attention was given to:
+The Python package reads variant-20 Gym CSV data with csv.DictReader, converts fields to typed values, filters active memberships, aggregates visits by kind, collects unique customers, calculates average visits and selects the leader.
 
-- avoiding `split(",")`;
-- matching parser field order to reflection field order;
-- retaining exception causes;
-- preserving the original LAB_04 output;
-- keeping the CSV exporter independent of the gym domain.
-
-### My Contribution
-
-My contribution included:
-
-- creating and maintaining the `LAB_05` branch;
-- creating Issues;
-- integrating each LAB_05 class into the project;
-- reviewing the code;
-- running all tests;
-- running SpotBugs;
-- testing the executable JAR;
-- running the CSV demonstration;
-- checking round-trip equality;
-- verifying the original application output;
-- updating version and CI configuration;
-- preparing and reviewing the documentation.
-
-I reviewed the submitted implementation and understand the purpose of the generic repository, annotation, reflection, CSV escaping, parser, checked exception and round-trip process.
-
-## 16. Control Questions
-
-### 1. What problem does the type parameter solve in Repository<T>?
-
-It makes the repository type-safe. The compiler knows what type of objects the repository stores, so casts and raw `Object` values are not required.
-
-### 2. How is a parameterized class different from a raw type?
-
-A parameterized type such as:
-
-```java
-Repository<MembershipRecord>
-```
-
-preserves compile-time type checking. A raw `Repository` loses part of this protection.
-
-### 3. Why does find use Predicate<? super T>?
-
-It allows the repository to accept a predicate for `T` or a compatible supertype of `T`, while still maintaining type safety.
-
-### 4. Why should all() return an immutable snapshot?
-
-The caller should not be able to modify the repository's internal collection directly. A snapshot also preserves its state even if the repository changes later.
-
-### 5. What is a checked exception and when is it appropriate here?
-
-A checked exception must be handled or declared by the caller. `DataStorageException` is suitable because export, import, filesystem and CSV processing are operations that can fail and the caller must decide how to handle the failure.
-
-### 6. Why preserve the cause of a custom exception?
-
-It keeps the original technical reason for the failure. For example, a high-level message can say that CSV reading failed while `getCause()` still contains the original `IOException`.
-
-### 7. Why are Path and Files better than constructing paths as strings?
-
-`Path` represents filesystem paths independently of the operating system, while `Files` provides standard operations for reading, writing and creating directories.
-
-### 8. Why must encoding be specified for both writing and reading?
-
-If different or platform-default encodings are used, characters can be corrupted. Using `StandardCharsets.UTF_8` on both sides makes the result deterministic.
-
-### 9. What do @Retention(RUNTIME) and @Target(FIELD) do?
-
-`RUNTIME` keeps the annotation available to reflection during execution. `FIELD` permits the annotation on fields.
-
-### 10. Why does an annotation not perform export itself?
-
-An annotation stores metadata only. Another component, in this project `CsvExporter`, reads that metadata and implements the actual behavior.
-
-### 11. How does getDeclaredFields() differ from obtaining only public fields?
-
-`getDeclaredFields()` returns fields declared directly by a class regardless of their access modifier. Public-field APIs do not provide the same access to private declared fields.
-
-### 12. Why check trySetAccessible()?
-
-The exporter must know whether it can actually read the private field. If access cannot be enabled, it should report an error rather than silently skip the value.
-
-### 13. Why must CSV field order be deterministic?
-
-Export and import must agree on the position of every value. Stable ordering also makes generated files reproducible on different runs and systems.
-
-### 14. Why is split(",") unsuitable for general CSV?
-
-A comma inside a quoted field is data rather than a separator. `split(",")` cannot distinguish between those cases.
-
-### 15. How are commas, quotes and line breaks escaped in CSV?
-
-If the field contains one of these characters, the complete field is enclosed in double quotes. A double quote inside the field is written twice.
-
-### 16. Why does an empty list require Class<T>?
-
-There is no first object from which the exporter could determine the class and its annotated fields. `Class<T>` allows the exporter to create the header even when there are zero records.
-
-### 17. How does the generic exporter differ from domain-specific fromCsv logic?
-
-The exporter only reads annotated fields through reflection and does not know their domain meaning. Import must know how to convert strings into types such as `LocalDate`, enum and `int`, so this part is domain-specific.
-
-### 18. What error levels does the program distinguish?
-
-The implementation distinguishes model validation, CSV syntax, CSV value conversion, filesystem errors and reflection errors.
-
-### 19. What does the round-trip test prove?
-
-It proves that an object can be exported to CSV and restored without changing the values used by `equals()`.
-
-### 20. Why should an exception not be swallowed by an empty catch block?
-
-The caller would lose information about the failure and could incorrectly treat an error as a successful empty result. Preserving or handling the exception keeps the program state understandable.
-
-## 17. Conclusion
-
-LAB_05 extended the existing gym application with a type-safe generic storage layer and CSV persistence.
-
-`Repository<T>` separates collection storage from application logic.
-
-`@CsvColumn` stores CSV metadata directly on the persistence model.
-
-Reflection allows `CsvExporter` to operate without knowing the specific gym class in advance.
-
-The CSV implementation correctly supports commas, quotes and multiline fields, and UTF-8 is explicitly used for both writing and reading.
-
-`DataStorageException` adds application-level context while preserving the original cause.
-
-The completed round-trip produced:
-
-```text
-Original records: 5
-Restored records: 5
-Round-trip equal: true
-```
-
-All previous report values were also preserved.
-
-The generated CSV can now be used as the input text format for the next software block of the project.
+The application includes separate loader, analysis, reporting, error and CLI modules, pytest, Ruff, wheel packaging, version 1.5.0 and a three-OS Python CI workflow.
