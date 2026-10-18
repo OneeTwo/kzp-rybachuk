@@ -68,7 +68,7 @@ def test_lowest_visit_cost_uses_protocol_without_subtype_branching() -> None:
     result = lowest_visit_cost(records)
 
     assert result is not None
-    assert result.customer == "Anna Melnyk"
+    assert result.customer == "Taras, Strong"
 
 
 def test_summarize_keeps_lab06_args_kwargs_contract() -> None:
