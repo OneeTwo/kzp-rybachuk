@@ -1,0 +1,50 @@
+name: Python LAB_06 CI
+
+on:
+  push:
+    branches: [LAB_06]
+  pull_request:
+    branches: [main]
+
+jobs:
+  verify-python:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Upgrade pip
+        run: python -m pip install --upgrade pip
+
+      - name: Install project and dev dependencies
+        run: python -m pip install -e ".[dev]"
+
+      - name: Run pytest
+        run: python -m pytest
+
+      - name: Run ruff lint
+        run: ruff check .
+
+      - name: Check ruff formatting
+        run: ruff format --check .
+
+      - name: Build wheel
+        run: python -m build
+
+      - name: Upload wheel
+        uses: actions/upload-artifact@v4
+        with:
+          name: kzp-lab06-${{ runner.os }}-${{ github.run_number }}
+          path: dist/*.whl
+          if-no-files-found: error
