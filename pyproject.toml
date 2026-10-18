@@ -3,9 +3,9 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "kzp-lab06-gym"
-version = "1.5.0"
-description = "LAB_06 Python data processing for variant 20 - Gym"
+name = "kzp-lab07-gym"
+version = "1.6.0"
+description = "LAB_07 object-oriented Python processing for variant 20 - Gym"
 readme = "README.md"
 requires-python = ">=3.11"
 
@@ -18,10 +18,11 @@ dev = [
 
 [project.scripts]
 kzp-lab06 = "kzp_lab06.cli:main"
+kzp-lab07 = "kzp_lab07.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["kzp_lab06*"]
+include = ["kzp_lab06*", "kzp_lab07*"]
 
 [tool.pytest.ini_options]
 addopts = "-q"
