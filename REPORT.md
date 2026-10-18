@@ -210,7 +210,11 @@ Result: 23 pytest tests passed; Ruff lint and format checks passed; wheel build 
 
 Branch: LAB_06
 
-The final Pull Request targets main and closes Issues #64–#70.
+Pull Request:
+
+https://github.com/OneeTwo/kzp-rybachuk/pull/71
+
+The Pull Request targets main and closes Issues #64–#70.
 
 ## 14. Academic Integrity
 
