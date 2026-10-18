@@ -18,8 +18,7 @@ def test_load_records_converts_types_and_preserves_quoted_comma(tmp_path: Path) 
     path = tmp_path / "input.csv"
     write_csv(
         path,
-        "customer,kind,start,end,visits\n"
-        '"Taras, Strong",MONTHLY,2026-10-05,2026-11-05,15\n',
+        'customer,kind,start,end,visits\n"Taras, Strong",MONTHLY,2026-10-05,2026-11-05,15\n',
     )
 
     records = load_records(path)
@@ -70,8 +69,7 @@ def test_invalid_integer_preserves_cause(tmp_path: Path) -> None:
     path = tmp_path / "input.csv"
     write_csv(
         path,
-        "customer,kind,start,end,visits\n"
-        "Ivan,MONTHLY,2026-10-01,2026-10-31,abc\n",
+        "customer,kind,start,end,visits\nIvan,MONTHLY,2026-10-01,2026-10-31,abc\n",
     )
 
     with pytest.raises(DataError) as caught:
@@ -86,8 +84,7 @@ def test_negative_visits_are_rejected(tmp_path: Path) -> None:
     path = tmp_path / "input.csv"
     write_csv(
         path,
-        "customer,kind,start,end,visits\n"
-        "Ivan,MONTHLY,2026-10-01,2026-10-31,-1\n",
+        "customer,kind,start,end,visits\nIvan,MONTHLY,2026-10-01,2026-10-31,-1\n",
     )
 
     with pytest.raises(DataError, match="cannot be negative"):
@@ -98,8 +95,7 @@ def test_invalid_date_preserves_cause(tmp_path: Path) -> None:
     path = tmp_path / "input.csv"
     write_csv(
         path,
-        "customer,kind,start,end,visits\n"
-        "Ivan,MONTHLY,not-a-date,2026-10-31,1\n",
+        "customer,kind,start,end,visits\nIvan,MONTHLY,not-a-date,2026-10-31,1\n",
     )
 
     with pytest.raises(DataError) as caught:
@@ -113,8 +109,7 @@ def test_end_before_start_is_rejected(tmp_path: Path) -> None:
     path = tmp_path / "input.csv"
     write_csv(
         path,
-        "customer,kind,start,end,visits\n"
-        "Ivan,MONTHLY,2026-11-01,2026-10-31,1\n",
+        "customer,kind,start,end,visits\nIvan,MONTHLY,2026-11-01,2026-10-31,1\n",
     )
 
     with pytest.raises(DataError, match="end cannot be before start"):
