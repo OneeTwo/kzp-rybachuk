@@ -1,10 +1,10 @@
-name: CI
+﻿name: CI
 
 on:
     push:
-        branches: [ main ]
+        branches: [ JAVA ]
     pull_request:
-        branches: [ main ]
+        branches: [ JAVA ]
 
 jobs:
     verify:
@@ -43,3 +43,4 @@ jobs:
                   name: lab05-${{ runner.os }}-${{ github.run_number }}
                   path: target/lab01-1.4.0.jar
                   if-no-files-found: error
+
