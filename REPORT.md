@@ -12,8 +12,15 @@
 **Repository:**  
 https://github.com/OneeTwo/kzp-rybachuk
 
-**Branch:**  
-https://github.com/OneeTwo/kzp-rybachuk/tree/LAB_07
+**Current Python branch:**
+https://github.com/OneeTwo/kzp-rybachuk/tree/main
+
+The LAB_01-LAB_05 Java/Maven project is maintained independently on branch
+[JAVA](https://github.com/OneeTwo/kzp-rybachuk/tree/JAVA), based on release `v1.4.0`.
+The LAB_06-LAB_07 Python project is maintained on `main`, currently at version **1.6.0**.
+Both Python stages remain available as `src/kzp_lab06/` (1.5.0) and
+`src/kzp_lab07/` (1.6.0); their external CSV and report compatibility is unchanged.
+Historical LAB_01-LAB_07 branches and release tags are preserved.
 
 Variant model:
 
@@ -515,3 +522,16 @@ CompletionSummary provides the required immutable completion-oriented summary. T
 The previous LAB_06 package and tests remain in place, allowing an explicit automated comparison between the dictionary and object models.
 
 The final full-cycle result includes pytest, Ruff, wheel packaging, clean wheel verification, three-OS GitHub Actions, documentation, Issues, Pull Request, version 1.6.0 and release tag v1.6.0 after merge.
+
+## Teacher feedback corrections
+
+Java-only build files, sources, tests and workflow are removed from the Python
+project on `main`; the completed LAB_05 project and independent Java CI are
+preserved on `JAVA`. The original release tags and historical lab branches remain unchanged.
+
+Both Python CLI main functions now initialize `exit_code = 0`, set it to 2 on
+`DataError` or `OSError`, and return it after the exception handler. The permitted
+argument-validation early return remains. CSV fields, variant 20, versions, report
+format and academic results are unchanged. Existing success, error, version and
+LAB_06/LAB_07 report-equivalence tests are retained. The CI matrix still checks
+Ubuntu, Windows and macOS and now runs for pushes and pull requests to `main`.

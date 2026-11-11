@@ -45,6 +45,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.print_usage(sys.stderr)
         return 2
 
+    exit_code = 0
+
     try:
         try:
             reference_date = date.fromisoformat(args.reference_date)
@@ -55,10 +57,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         report = format_report(records, reference_date)
         write_report(args.output, report)
         print(report, end="")
-        return 0
     except (DataError, OSError) as error:
         print(f"Error: {error}", file=sys.stderr)
-        return 2
+        exit_code = 2
+
+    return exit_code
 
 
 if __name__ == "__main__":

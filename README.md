@@ -11,9 +11,12 @@ Laboratory Work No. 7 for the Cross-Platform Programming course.
 
 https://github.com/OneeTwo/kzp-rybachuk
 
-LAB_07 branch:
-
-https://github.com/OneeTwo/kzp-rybachuk/tree/LAB_07
+The LAB_01-LAB_05 Java/Maven project is maintained independently on branch
+[JAVA](https://github.com/OneeTwo/kzp-rybachuk/tree/JAVA), based on release `v1.4.0`.
+The LAB_06-LAB_07 Python project is maintained on `main`, currently at version **1.6.0**.
+Both Python stages remain available as `src/kzp_lab06/` (1.5.0) and
+`src/kzp_lab07/` (1.6.0); their external CSV and report compatibility is unchanged.
+Historical LAB_01-LAB_07 branches and release tags are preserved.
 
 ## Continuity from LAB_06
 
@@ -155,7 +158,7 @@ Responsibilities:
 ## Setup
 
 ~~~powershell
-git checkout LAB_07
+git checkout main
 git pull
 py -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -e ".[dev]"
@@ -221,13 +224,13 @@ The wheel is verified in a new clean virtual environment through tools/verify_wh
 
 Each job runs pytest, Ruff lint, Ruff format check, wheel build, clean-environment wheel installation and packaged CLI verification.
 
-The Java CI workflow and previous Java tests remain in the repository.
+Java CI and Java tests are maintained independently on branch `JAVA`. Python CI checks pushes and pull requests to `main`.
 
 Successful LAB_07 branch CI:
 
 https://github.com/OneeTwo/kzp-rybachuk/actions/runs/39172672483
 
-Current result: 51 pytest tests passed, Ruff lint and formatting passed, the 1.6.0 wheel built and installed in a clean environment, and all three OS jobs succeeded.
+Historical LAB_07 CI result: 51 pytest tests passed, Ruff lint and formatting passed, the 1.6.0 wheel built and installed in a clean environment, and all three OS jobs succeeded.
 
 ## GitHub Issues
 
@@ -246,3 +249,9 @@ The final Pull Request targets main and closes Issues #72–#78.
 ## Pull Request
 
 https://github.com/OneeTwo/kzp-rybachuk/pull/79
+
+## Teacher feedback corrections
+
+Both Python CLIs retain the argument-validation early return and use one final
+`return exit_code` after processing. Success remains 0; expected data and path errors
+remain 2, with the same stderr messages. Exception handlers do not return.

@@ -1,8 +1,8 @@
-name: Python LAB_07 CI
+name: Python CI
 
 on:
   push:
-    branches: [LAB_07]
+    branches: [main]
   pull_request:
     branches: [main]
 
